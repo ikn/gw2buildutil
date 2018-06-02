@@ -34,4 +34,10 @@ class BuildMetadata:
 
 
 class Build:
-    pass
+    def __init__ (self, intro, alternatives=None, usage=None, notes=None,
+                  encounters=None):
+        self.intro = intro
+        self.alternatives = intro
+        self.usage = intro
+        self.notes = intro
+        self.encounters = intro
