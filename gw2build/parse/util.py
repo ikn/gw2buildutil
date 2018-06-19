@@ -11,6 +11,7 @@ def _parse_section_title (line):
         return (level, title)
 
 
+# rstrip()s lines
 def split_sections (lines, first_title):
     lines_iter = iter(lines)
     next_title = first_title
@@ -35,5 +36,29 @@ def split_sections (lines, first_title):
         yield (next_title, _iter_section())
 
 
-def strip_empty_lines (lines, leading=False, inner=False, trailing=False):
-    return lines
+def strip_empty_lines (lines, leading=True, trailing=True, inner=None):
+    in_leading = True
+    empty_count = 0
+
+    for line in lines:
+        if not line:
+            if not (leading and in_leading):
+                empty_count += 1
+
+        else:
+            if inner == 'all' and not in_leading:
+                pass
+            elif inner == 'collapse' and not in_leading:
+                if empty_count > 0:
+                    yield ''
+            else: # inner is None or in_leading
+                for i in range(empty_count):
+                    yield ''
+
+            empty_count = 0
+            in_leading = False
+            yield line
+
+    if not trailing:
+        for i in range(empty_count):
+            yield ''
