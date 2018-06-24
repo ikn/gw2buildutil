@@ -76,8 +76,22 @@ weapon_hand = {
     'off': build.WeaponHand(False, True),
 }
 
-sigil_tier = {
+upgrade_tier = {
     'superior': 'superior',
     'major': 'major',
     'minor': 'minor',
+}
+
+armour_type = {
+    'helm': 'helm',
+    'head': 'helm',
+    'shoulders': 'shoulders',
+    'coat': 'coat',
+    'chest': 'coat',
+    'gloves': 'gloves',
+    'hands': 'gloves',
+    'leggings': 'leggings',
+    'legs': 'leggings',
+    'boots': 'boots',
+    'feet': 'boots',
 }

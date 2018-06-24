@@ -102,6 +102,34 @@ class Weapons:
                             '{}'.format(self.set1))
 
 
+class Rune:
+    def __init__ (self, name, tier):
+        self.name = name
+        self.tier = tier
+
+    def __str__ (self):
+        return '{} rune of {}'.format(tier, name)
+
+
+class ArmourPiece:
+    def __init__ (self, type_, stat, rune):
+        self.type_ = type_
+        self.stat = stat
+        self.rune = rune
+
+
+class Armour:
+    def __init__ (self, pieces):
+        self.pieces = {p.type_: p for p in pieces}
+
+        if len(pieces) != 6:
+            raise ValueError('expected 6 armour pieces, got ' \
+                             '{}'.format(len(pieces)))
+        if len(self.pieces) != 6:
+            raise ValueError('not all armour types are present: ' \
+                             '{}'.format(list(self.pieces.keys())))
+
+
 class Gear:
     def __init__ (self, weapons, armour, trinkets, consumables):
         self.weapons = weapons

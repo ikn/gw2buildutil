@@ -1,4 +1,5 @@
 import re
+import collections
 
 from ... import build, definitions
 from .. import util, text as parse_text
@@ -60,7 +61,8 @@ def parse_weapons (line, stats):
         return build.Weapon(type_, hand, weapon_stats, sigils)
 
     def build_weapon_hand (weapons_field, sigils_field):
-        types = [definitions.weapon_type[t] for t in weapons_field.split()]
+        types = [definitions.weapon_type[t]
+                 for t in weapons_field.lower().split()]
         sigils = [parse_text.parse_sigil(s) for s in sigils_field.split()]
         if len(types) == 2:
             return (build_weapon(types[0], def_hand['main'], (sigils[0],)),
@@ -74,9 +76,33 @@ def parse_weapons (line, stats):
          if fields['types2'] is not None else None))
 
 
-def parse_armour (line, stats):
-    # TODO
-    return None
+runes_pattern = re.compile(r'^(' \
+    '(?P<single>\w+)' \
+    '|' \
+    '(?P<multi>\d \w+( \+ \d \w+)+)' \
+    ') runes$')
+
+def parse_armour (runes_line, stats):
+    match = runes_pattern.match(runes_line)
+    if match is None:
+        raise util.ParseError('runes definition doesn\'t match expected ' \
+                              'format: {}'.format(repr(line)))
+
+    fields = match.groupdict()
+    if fields['single'] is not None:
+        runes = collections.Counter({fields['single']: 6})
+    else:
+        rune_items = (item.split() for item in fields['multi'].split(' + '))
+        runes = collections.Counter(
+            {type_: int(count) for count, type_ in rune_items})
+    if sum(runes.values()) != 6:
+        raise util.ParseError('wrong total rune count: {}'.format(dict(runes)))
+
+    types = set(definitions.armour_type.values())
+    return build.Armour([
+        build.ArmourPiece(type_, stats_lookup((type_, 'armour'), stats), rune)
+        for type_, rune in zip(types, runes.elements())
+    ])
 
 
 def parse_trinkets (stats):
