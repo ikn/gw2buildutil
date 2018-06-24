@@ -1,6 +1,10 @@
 import re
 
 
+class ParseError (ValueError):
+    pass
+
+
 _title_regex = re.compile(r'(#+)([^#].*)?$')
 def _parse_section_title (line):
     match = _title_regex.match(line)

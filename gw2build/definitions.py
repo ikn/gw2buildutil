@@ -44,3 +44,40 @@ profession = {
     'chronomancer': build.Profession('Mesmer', 'Chronomancer'),
     'mirage': build.Profession('Mesmer', 'Mirage'),
 }
+
+weapon_type = {
+    'greatsword': 'greatsword',
+    'hammer': 'hammer',
+    'longbow': 'longbow',
+    'rifle': 'rifle',
+    'shortbow': 'shortbow',
+    'staff': 'staff',
+
+    'axe': 'axe',
+    'dagger': 'dagger',
+    'mace': 'mace',
+    'pistol': 'pistol',
+    'sword': 'sword',
+    'sceptre': 'sceptre',
+    'scepter': 'sceptre',
+    'focus': 'focus',
+    'shield': 'shield',
+    'torch': 'torch',
+    'warhorn': 'warhorn',
+
+    'harpoon': 'harpoon',
+    'spear': 'spear',
+    'trident': 'trident',
+}
+
+weapon_hand = {
+    'both': build.WeaponHand(True, True),
+    'main': build.WeaponHand(True, False),
+    'off': build.WeaponHand(False, True),
+}
+
+sigil_tier = {
+    'superior': 'superior',
+    'major': 'major',
+    'minor': 'minor',
+}
