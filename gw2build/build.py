@@ -75,10 +75,10 @@ class Sigil:
 
 
 class Weapon:
-    def __init__ (self, type_, hand, stat, sigils):
+    def __init__ (self, type_, hand, stats, sigils):
         self.type_ = type_
         self.hand = hand
-        self.stat = stat
+        self.stats = stats
         self.sigils = tuple(sigils)
 
         if len(self.sigils) != len(self.hand):
@@ -106,9 +106,9 @@ class Rune:
 
 
 class ArmourPiece:
-    def __init__ (self, type_, stat, rune):
+    def __init__ (self, type_, stats, rune):
         self.type_ = type_
-        self.stat = stat
+        self.stats = stats
         self.rune = rune
 
 
@@ -121,6 +121,24 @@ class Armour:
                              '{}'.format(len(pieces)))
         if len(self.pieces) != 6:
             raise ValueError('not all armour types are present: '
+                             '{}'.format(list(self.pieces.keys())))
+
+
+class Trinket:
+    def __init__ (self, type_, stats):
+        self.type_ = type_
+        self.stats = stats
+
+
+class Trinkets:
+    def __init__ (self, pieces):
+        self.pieces = {p.type_: p for p in pieces}
+
+        if len(pieces) != 6:
+            raise ValueError('expected 6 trinkets, got '
+                             '{}'.format(len(pieces)))
+        if len(self.pieces) != 6:
+            raise ValueError('not all trinket types are present: '
                              '{}'.format(list(self.pieces.keys())))
 
 

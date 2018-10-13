@@ -31,9 +31,31 @@ def parse_description (paragraphs):
         '\n\n'.join('\n'.join(lines) for lines in paragraphs))
 
 
-def parse_stats (line):
-    # TODO
-    return {None: None}
+stats_pattern = re.compile(r'^'
+    '\w+( [\w +]+)?(, \w+( [\w +]+)?)*'
+    '$')
+
+def parse_stats (meta, line):
+    gear_stats = {}
+    if stats_pattern.match(line) is None:
+        raise util.ParseError('stats definition doesn\'t match expected '
+                              'format: {}'.format(repr(line)))
+
+    for section in line.split(', '):
+        words = section.split()
+        stats = (definitions.pvp_stats
+                 if meta.game_modes is definitions.game_modes['pvp']
+                 else definitions.stats)[words[0]]
+        gear_groups = parse_text.parse_gear_groups(section[len(words[0]) + 1:])
+
+        if not gear_groups:
+            gear_stats[None] = stats
+        for gear_group in gear_groups:
+            gear_stats[gear_group] = stats
+
+    if None not in gear_stats:
+        raise util.ParseError('no default stats found')
+    return gear_stats
 
 
 def stats_lookup (names, stats):
@@ -43,21 +65,22 @@ def stats_lookup (names, stats):
     return stats[None]
 
 
-weapons_pattern = re.compile(r'^' \
-    '(?P<types1>\w+( \w+)?) \((?P<sigils1>\w+ \w+)\)' \
-    '( / (?P<types2>\w+( \w+)?) \((?P<sigils2>\w+ \w+)\))?' \
+weapons_pattern = re.compile(r'^'
+    '(?P<types1>\w+( \w+)?) \((?P<sigils1>\w+ \w+)\)'
+    '( / (?P<types2>\w+( \w+)?) \((?P<sigils2>\w+ \w+)\))?'
     '$')
 
 def parse_weapons (line, stats):
     match = weapons_pattern.match(line)
     if match is None:
-        raise util.ParseError('weapons definition doesn\'t match expected ' \
+        raise util.ParseError('weapons definition doesn\'t match expected '
                               'format: {}'.format(repr(line)))
     fields = match.groupdict()
     def_hand = definitions.weapon_hand
 
     def build_weapon (type_, hand, sigils):
-        weapon_stats = stats_lookup((type_, 'weapon'), stats)
+        weapon_stats = stats_lookup(
+            (type_, definitions.gear_group['weapons']), stats)
         return build.Weapon(type_, hand, weapon_stats, sigils)
 
     def build_weapon_hand (weapons_field, sigils_field):
@@ -76,16 +99,16 @@ def parse_weapons (line, stats):
          if fields['types2'] is not None else None))
 
 
-runes_pattern = re.compile(r'^(' \
-    '(?P<single>\w+)' \
-    '|' \
-    '(?P<multi>\d \w+( \+ \d \w+)+)' \
+runes_pattern = re.compile(r'^('
+    '(?P<single>\w+)'
+    '|'
+    '(?P<multi>\d \w+( \+ \d \w+)+)'
     ') runes$')
 
 def parse_armour (runes_line, stats):
     match = runes_pattern.match(runes_line)
     if match is None:
-        raise util.ParseError('runes definition doesn\'t match expected ' \
+        raise util.ParseError('runes definition doesn\'t match expected '
                               'format: {}'.format(repr(line)))
 
     fields = match.groupdict()
@@ -99,15 +122,29 @@ def parse_armour (runes_line, stats):
         raise util.ParseError('wrong total rune count: {}'.format(dict(runes)))
 
     types = set(definitions.armour_type.values())
-    return build.Armour([
-        build.ArmourPiece(type_, stats_lookup((type_, 'armour'), stats), parse_text.parse_rune(rune))
-        for type_, rune in zip(types, runes.elements())
-    ])
+    return build.Armour([build.ArmourPiece(
+        type_,
+        stats_lookup((type_, definitions.gear_group['armour']), stats),
+        parse_text.parse_rune(rune)
+    ) for type_, rune in zip(types, runes.elements())])
 
 
 def parse_trinkets (stats):
-    # TODO
-    return None
+    g = definitions.gear_group
+    t = definitions.trinket_type
+    return build.Trinkets([
+        build.Trinket(t['back'], stats_lookup(
+            (g['back'], g['trinkets']), stats)),
+        build.Trinket(t['accessory 1'], stats_lookup(
+            (g['accessory 1'], g['accessories'], g['trinkets']), stats)),
+        build.Trinket(t['accessory 2'], stats_lookup(
+            (g['accessory 2'], g['accessories'], g['trinkets']), stats)),
+        build.Trinket(t['amulet'], stats_lookup(
+            (g['amulet'], g['trinkets']), stats)),
+        build.Trinket(t['ring 1'], stats_lookup(
+            (g['ring 1'], g['rings'], g['trinkets']), stats)),
+        build.Trinket(t['ring 2'], stats_lookup( (g['ring 2'], g['rings'], g['trinkets']), stats)),
+    ])
 
 
 def parse_traits (line):
@@ -128,12 +165,12 @@ def parse_prof_options (line, meta):
 def parse_setup (lines, meta):
     if len(lines) not in (5, 6):
         raise util.ParseError(
-            'second intro paragraph has the wrong number of lines: ' \
+            'second intro paragraph has the wrong number of lines: '
             '{}, expected 5 or 6'.format(len(lines)))
 
     profs = definitions.profession
     prof_line = lines[5] if len(lines) == 6 else None
-    stats = parse_stats(lines[1])
+    stats = parse_stats(meta, lines[1])
     return {
         'gear': build.Gear(
             parse_weapons(lines[0], stats),
@@ -146,6 +183,7 @@ def parse_setup (lines, meta):
 
 
 def parse_skills (lines):
+    # TODO
     # 1 paragraph: lines heal, utilities, elite
     return None
 

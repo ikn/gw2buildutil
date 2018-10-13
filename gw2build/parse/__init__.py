@@ -5,26 +5,26 @@ from .. import build, definitions
 from . import util, section
 
 
-title_pattern = re.compile(r'^' \
-    '(?P<mode>.+) ' \
-    '(?P<prof>\w+) ' \
-    '\((?P<labels>\w+(, \w+)*)\)' \
+title_pattern = re.compile(r'^'
+    '(?P<mode>.+) '
+    '(?P<prof>\w+) '
+    '\((?P<labels>\w+(, \w+)*)\)'
     '$')
 
 def parse_title (title):
     match = title_pattern.match(title)
     if match is None:
-        raise util.ParseError('title doesn\'t match expected format: ' \
+        raise util.ParseError('title doesn\'t match expected format: '
                               '{}'.format(repr(title)))
     fields = match.groupdict()
 
     game_modes = definitions.game_modes.get(fields['mode'])
     if game_modes is None:
-        raise util.ParseError('title doesn\'t start with a known ' \
+        raise util.ParseError('title doesn\'t start with a known '
                               'game modes identifier: {}'.format(repr(title)))
     profession = definitions.profession.get(fields['prof'])
     if profession is None:
-        raise util.ParseError('title has a missing or incorrect profession ' \
+        raise util.ParseError('title has a missing or incorrect profession '
                               'identifier: {}'.format(repr(title)))
     labels = [l.strip() for l in fields['labels'].split(',')]
     return build.BuildMetadata(game_modes, profession, labels)

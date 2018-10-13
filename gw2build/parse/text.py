@@ -1,4 +1,7 @@
+import re
+
 from .. import build, definitions
+from . import util
 
 
 def _parse_upgrade (text, cls):
@@ -20,3 +23,20 @@ def parse_sigil (text):
 
 def parse_rune (text):
     return _parse_upgrade(text, build.Rune)
+
+
+gear_groups_pattern = re.compile(r'^'
+    '[\w ]+( \+ [\w ]+)*'
+    '$')
+
+def parse_gear_groups (text):
+    if not text:
+        return []
+    if gear_groups_pattern.match(text) is None:
+        raise util.ParseError('gear definition doesn\'t match expected '
+                              'format: {}'.format(repr(text)))
+
+    return [
+        definitions.gear_group[group_text]
+        for group_text in text.split(' + ')
+    ]
