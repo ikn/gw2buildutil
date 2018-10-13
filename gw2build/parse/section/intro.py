@@ -100,7 +100,7 @@ def parse_armour (runes_line, stats):
 
     types = set(definitions.armour_type.values())
     return build.Armour([
-        build.ArmourPiece(type_, stats_lookup((type_, 'armour'), stats), rune)
+        build.ArmourPiece(type_, stats_lookup((type_, 'armour'), stats), parse_text.parse_rune(rune))
         for type_, rune in zip(types, runes.elements())
     ])
 

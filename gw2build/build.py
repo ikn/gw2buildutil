@@ -3,13 +3,13 @@ class GameModes:
         self.name = name
         self.game_modes = set(game_modes)
 
-    def __str__ (self):
-        return self.name
-
     @property
     def description (self):
         return 'Builds intended for use in game modes: {}.'.format(
             ', '.join(self.game_modes))
+
+    def __str__ (self):
+        return self.name
 
 
 class Profession:
@@ -42,6 +42,11 @@ class MarkdownBody (TextBody):
         self.text = text
 
 
+class Stats:
+    def __init__ (self, name):
+        self.name = name
+
+
 class WeaponHand:
     def __init__ (self, main, off):
         self.main = bool(main)
@@ -62,19 +67,11 @@ class WeaponHand:
         else:
             return 'off'
 
-    def __str__ (self):
-        return '<WeaponHand({})>'.format(self.label)
-
-    __repr__ = __str__
-
 
 class Sigil:
     def __init__ (self, name, tier):
         self.name = name
         self.tier = tier
-
-    def __str__ (self):
-        return '{} sigil of {}'.format(tier, name)
 
 
 class Weapon:
@@ -85,7 +82,7 @@ class Weapon:
         self.sigils = tuple(sigils)
 
         if len(self.sigils) != len(self.hand):
-            raise ValueError('wrong number of sigils for ' \
+            raise ValueError('wrong number of sigils for '
                              '{}: {}'.format(self.hand, len(self.sigils)))
 
 
@@ -95,10 +92,10 @@ class Weapons:
         self.set2 = None if set2 is None else tuple(set2)
 
         if sum(len(w.hand) for w in self.set1) != 2:
-            raise ValueError('wrong number of weapons in set 1: ' \
+            raise ValueError('wrong number of weapons in set 1: '
                             '{}'.format(self.set1))
         if self.set2 is not None and sum(len(w.hand) for w in self.set2) != 2:
-            raise ValueError('wrong number of weapons in set 2: ' \
+            raise ValueError('wrong number of weapons in set 2: '
                             '{}'.format(self.set1))
 
 
@@ -106,9 +103,6 @@ class Rune:
     def __init__ (self, name, tier):
         self.name = name
         self.tier = tier
-
-    def __str__ (self):
-        return '{} rune of {}'.format(tier, name)
 
 
 class ArmourPiece:
@@ -123,10 +117,10 @@ class Armour:
         self.pieces = {p.type_: p for p in pieces}
 
         if len(pieces) != 6:
-            raise ValueError('expected 6 armour pieces, got ' \
+            raise ValueError('expected 6 armour pieces, got '
                              '{}'.format(len(pieces)))
         if len(self.pieces) != 6:
-            raise ValueError('not all armour types are present: ' \
+            raise ValueError('not all armour types are present: '
                              '{}'.format(list(self.pieces.keys())))
 
 
