@@ -161,12 +161,36 @@ class Intro:
         self.profession_options = None
 
 
+class Boon:
+    def __init__ (self, id_, name):
+        self.id_ = id_
+        self.name = name
+
+
+class BoonTarget:
+    def __init__ (self, name):
+        self.name = name
+
+
+class BoonUptime:
+    def __init__ (self, boon, target, uptime_percent):
+        self.boon = boon
+        self.target = target
+        self.uptime_percent = uptime_percent
+
+
+class BoonNotes:
+    def __init__ (self, boon_uptimes):
+        self.boon_uptimes = boon_uptimes
+
+
 class Build:
     def __init__ (self, metadata, intro, alternatives=None, usage=None,
-                  notes=None, encounters=None):
+                  notes=None, boon_notes=None, encounters=None):
         self.metadata = metadata
         self.intro = intro
         self.alternatives = alternatives
         self.usage = usage
         self.notes = notes
+        self.boon_notes = boon_notes
         self.encounters = encounters

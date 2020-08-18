@@ -100,16 +100,16 @@ def parse_weapons (line, stats):
 
 
 runes_pattern = re.compile(r'^('
-    '(?P<single>\w+)'
+    '(?P<single>[\w ]+)'
     '|'
-    '(?P<multi>\d \w+( \+ \d \w+)+)'
+    '(?P<multi>\d [\w ]+( \+ \d [\w ]+)+)'
     ') runes$')
 
 def parse_armour (runes_line, stats):
     match = runes_pattern.match(runes_line)
     if match is None:
         raise util.ParseError('runes definition doesn\'t match expected '
-                              'format: {}'.format(repr(line)))
+                              'format: {}'.format(repr(runes_line)))
 
     fields = match.groupdict()
     if fields['single'] is not None:
@@ -143,7 +143,8 @@ def parse_trinkets (stats):
             (g['amulet'], g['trinkets']), stats)),
         build.Trinket(t['ring 1'], stats_lookup(
             (g['ring 1'], g['rings'], g['trinkets']), stats)),
-        build.Trinket(t['ring 2'], stats_lookup( (g['ring 2'], g['rings'], g['trinkets']), stats)),
+        build.Trinket(t['ring 2'], stats_lookup(
+            (g['ring 2'], g['rings'], g['trinkets']), stats)),
     ])
 
 
@@ -163,11 +164,12 @@ def parse_prof_options (line, meta):
 
 
 def parse_setup (lines, meta):
-    if len(lines) not in (5, 6):
+    if len(lines) not in (4, 5, 6):
         raise util.ParseError(
             'second intro paragraph has the wrong number of lines: '
-            '{}, expected 5 or 6'.format(len(lines)))
+            '{}, expected 4-6'.format(len(lines)))
 
+    # TODO: food optional - determine whether prof line must or must not exist based on the profession
     profs = definitions.profession
     prof_line = lines[5] if len(lines) == 6 else None
     stats = parse_stats(meta, lines[1])
@@ -176,7 +178,7 @@ def parse_setup (lines, meta):
             parse_weapons(lines[0], stats),
             parse_armour(lines[2], stats),
             parse_trinkets(stats),
-            parse_food(lines[4])),
+            None), #parse_food(lines[4])),
         'traits': parse_traits(lines[3]),
         'profession options': parse_prof_options(prof_line, meta)
     }
@@ -185,6 +187,7 @@ def parse_setup (lines, meta):
 def parse_skills (lines):
     # TODO
     # 1 paragraph: lines heal, utilities, elite
+    # for rev, this is instead the legends
     return None
 
 

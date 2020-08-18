@@ -8,7 +8,7 @@ from . import util, section
 title_pattern = re.compile(r'^'
     '(?P<mode>.+) '
     '(?P<prof>\w+) '
-    '\((?P<labels>\w+(, \w+)*)\)'
+    '\((?P<labels>[ \w]+(, [ \w]+)*)\)'
     '$')
 
 def parse_title (title):
@@ -35,7 +35,9 @@ section_parsers = {
     'alternatives': section.alternatives,
     'usage': section.usage,
     'notes': section.notes,
+    'boon notes': section.boonnotes,
     'encounters': section.encounters,
+    'calculation': False,
 }
 
 
@@ -48,7 +50,11 @@ def parse_body (f, meta):
         section_module = section_parsers.get(title)
         if section_module is None:
             raise util.ParseError('unknown section: {}'.format(repr(title)))
+        elif section_module is False:
+            for line in section_lines:
+                pass
         else:
-            build_data[title] = section_module.parse(section_lines, meta)
+            build_data[title.replace(' ', '_')] = (
+                section_module.parse(section_lines, meta))
 
     return build.Build(meta, **build_data)
