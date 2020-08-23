@@ -12,10 +12,12 @@ from . import definitions
 
 class Configuration:
     def __init__ (
-        self, target_buffs, target_uptime, uptime_comparison_tolerance=.01
+        self, target_buffs, target_uptime, overstack_uptime,
+        uptime_comparison_tolerance=.01
     ):
         self.target_buffs = target_buffs
         self.target_uptime = target_uptime
+        self.overstack_uptime = overstack_uptime
         self.uptime_comparison_tolerance = uptime_comparison_tolerance
         self.max_group_size = 5
 
@@ -234,12 +236,21 @@ class _SimpleComposition:
 
 
 class Composition:
-    def __init__ (self, comps):
+    def __init__ (self, config, comps):
+        self._config = config
         self.compositions = list(comps)
 
     @property
     def roles (self):
         return self.compositions[0].roles
+
+    def overstack (self):
+        for buff in self._config.target_buffs:
+            for uptime in self.compositions[0].uptime(buff):
+                if uptime >= self._config.overstack_uptime:
+                    return True
+        return False
+
 
     def __str__ (self):
         return ' '.join('[' + str(comp) + ']' for comp in self.compositions)
@@ -248,7 +259,7 @@ class Composition:
         return f'Composition<{str(self)}>'
 
 
-def _simplify_compositions (comps):
+def _simplify_compositions (config, comps):
     comps = list(comps)
 
     # group together comps that use the same roles
@@ -302,7 +313,7 @@ def _simplify_compositions (comps):
                     break
             else:
                 normalised_groupings.append(comp)
-        yield Composition(normalised_groupings)
+        yield Composition(config, normalised_groupings)
 
 
 # base_comp must contain exactly 1 grouping
@@ -379,4 +390,5 @@ def generate_compositions (roles, config):
 
     ordered_target_buffs = sorted(config.target_buffs,
                                   key=lambda buff: len(roles_by_buff[buff]))
-    return _simplify_compositions(list(generate(list(ordered_target_buffs))))
+    return _simplify_compositions(
+        config, list(generate(list(ordered_target_buffs))))
