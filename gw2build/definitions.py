@@ -1,16 +1,16 @@
 from . import build
 
 game_modes = {
+    'open world': build.GameModes(
+        'Open World', ('open world', 'dungeons')),
     'dungeons': build.GameModes(
-        'Dungeons', ('dungeons', 'open world')),
+        'Dungeons', ('dungeons',)),
     'fractals': build.GameModes(
         'Fractals', ('unorganised fractals', 'dungeons', 'open world')),
-    'open world': build.GameModes(
-        'Open World', ('open world',)),
+    'raids': build.GameModes(
+        'Raids', ('casual raids', 'casual organised fractals')),
     'pvp': build.GameModes(
         'PvP', ('PvP',)),
-    'raids': build.GameModes(
-        'Raids', ('raids', 'organised fractals')),
     'wvw': build.GameModes(
         'WvW', ('WvW',)),
 }
