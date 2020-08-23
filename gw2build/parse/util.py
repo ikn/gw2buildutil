@@ -66,3 +66,14 @@ def strip_empty_lines (lines, leading=True, trailing=True, inner=None):
     if not trailing:
         for i in range(empty_count):
             yield ''
+
+
+def group_paragraphs (lines):
+    paragraph = []
+    for line in lines:
+        if line:
+            paragraph.append(line)
+        else:
+            yield paragraph
+            paragraph = []
+    yield paragraph

@@ -41,11 +41,13 @@ def parse_uptime (line):
 
 
 def parse (lines, meta):
-    lines = util.strip_empty_lines(lines, inner='all')
-    try:
-        boon_uptimes = parse_uptime(next(lines))
-    except StopIteration:
+    paragraphs = list(util.group_paragraphs(
+        util.strip_empty_lines(lines, inner='collapse')))
+    if len(paragraphs) < 1:
         raise util.ParseError('boon notes is incomplete')
 
+    boon_variants = [build.BoonUptimeVariant(parse_uptime(line))
+                     for line in paragraphs[0]]
+
     # TODO: other lines
-    return build.BoonNotes(boon_uptimes)
+    return build.BoonNotes(boon_variants)

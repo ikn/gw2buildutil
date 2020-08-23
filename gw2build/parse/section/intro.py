@@ -5,17 +5,6 @@ from ... import build, definitions
 from .. import util, text as parse_text
 
 
-def group_paragraphs (lines):
-    paragraph = []
-    for line in lines:
-        if line:
-            paragraph.append(line)
-        else:
-            yield paragraph
-            paragraph = []
-    yield paragraph
-
-
 url_pattern = re.compile(r'^http://gw2skills.net/editor/\?[A-Za-z0-9+-/]+$')
 
 def parse_url (lines):
@@ -192,7 +181,7 @@ def parse_skills (lines):
 
 
 def parse (lines, meta):
-    paragraphs = list(group_paragraphs(
+    paragraphs = list(util.group_paragraphs(
         util.strip_empty_lines(lines, inner='collapse')))
     if len(paragraphs) < 3:
         raise util.ParseError('intro is incomplete')

@@ -118,15 +118,12 @@ class Role:
     def list_from_builds (builds, config):
         builds_uptimes = {}
         for name, build in builds.items():
-            if isinstance(build, Build):
-                if build.boon_notes is None:
-                    continue
-                buff_uptimes = build.boon_notes.boon_uptimes
-            else:
-                buff_uptimes = build
-            builds_uptimes[name] = [
-                BuffUptime.from_boon_uptime(buff_uptime, config)
-                for buff_uptime in buff_uptimes]
+            if build.boon_notes is None:
+                continue
+            for i, variant in enumerate(build.boon_notes.boon_uptime_variants):
+                builds_uptimes[(name, i)] = [
+                    BuffUptime.from_boon_uptime(buff_uptime, config)
+                    for buff_uptime in variant.boon_uptimes]
 
         eq_builds = collections.defaultdict(lambda: set())
         for (name1, uptimes1), (name2, uptimes2) in \
@@ -146,8 +143,11 @@ class Role:
                     break
             else:
                 builds_groups[name] = build_group
-        roles = [Role(builds_uptimes[next(iter(build_group))], build_group)
-                 for build_group in builds_groups.values()]
+
+        roles = [
+            Role(builds_uptimes[next(iter(build_group))],
+                 [name[0] for name in build_group])
+            for build_group in builds_groups.values()]
 
         providing_roles = collections.defaultdict(lambda: set())
         for role1, role2 in itertools.permutations(roles, 2):

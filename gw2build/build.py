@@ -179,9 +179,14 @@ class BoonUptime:
         self.uptime_percent = uptime_percent
 
 
-class BoonNotes:
+class BoonUptimeVariant:
     def __init__ (self, boon_uptimes):
         self.boon_uptimes = boon_uptimes
+
+
+class BoonNotes:
+    def __init__ (self, boon_uptime_variants):
+        self.boon_uptime_variants = boon_uptime_variants
 
 
 class Build:
