@@ -1,7 +1,7 @@
 class GameModes:
     def __init__ (self, name, game_modes):
         self.name = name
-        self.game_modes = set(game_modes)
+        self.game_modes = list(game_modes)
 
     @property
     def description (self):
