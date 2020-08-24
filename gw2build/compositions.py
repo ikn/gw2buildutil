@@ -12,7 +12,7 @@ from . import definitions
 
 class Configuration:
     def __init__ (
-        self, target_buffs, target_uptime, overstack_uptime,
+        self, target_buffs, target_uptime, overstack_uptime=None,
         uptime_comparison_tolerance=.01
     ):
         self.target_buffs = target_buffs
@@ -161,7 +161,8 @@ class Role:
 
 
 class _SimpleComposition:
-    def __init__ (self, group1, group2):
+    def __init__ (self, config, group1, group2):
+        self._config = config
         self.group1 = list(group1)
         self.group1_counter = collections.Counter(self.group1)
         self.group2 = list(group2)
@@ -230,27 +231,30 @@ class _SimpleComposition:
             result.append(own_group_uptime + off_group_uptime)
         return result
 
+    def overstack (self):
+        if self._config.overstack_uptime is None:
+            return False
+
+        for buff in self._config.target_buffs:
+            for uptime in self.uptime(buff):
+                if uptime >= self._config.overstack_uptime:
+                    return True
+
+        return False
+
+
     @staticmethod
-    def empty ():
-        return _SimpleComposition([], [])
+    def empty (config):
+        return _SimpleComposition(config, [], [])
 
 
 class Composition:
-    def __init__ (self, config, comps):
-        self._config = config
+    def __init__ (self, comps):
         self.compositions = list(comps)
 
     @property
     def roles (self):
         return self.compositions[0].roles
-
-    def overstack (self):
-        for buff in self._config.target_buffs:
-            for uptime in self.compositions[0].uptime(buff):
-                if uptime >= self._config.overstack_uptime:
-                    return True
-        return False
-
 
     def __str__ (self):
         return ' '.join('[' + str(comp) + ']' for comp in self.compositions)
@@ -287,6 +291,9 @@ def _simplify_compositions (config, comps):
     grouped_comps.sort(key=lambda groupings: len(groupings[0]))
     simplified_grouped_comps = []
     for new_groupings in grouped_comps:
+        if new_groupings[0].overstack():
+            continue
+
         j = 0
         while j < len(simplified_grouped_comps):
             existing_groupings = simplified_grouped_comps[j]
@@ -313,7 +320,7 @@ def _simplify_compositions (config, comps):
                     break
             else:
                 normalised_groupings.append(comp)
-        yield Composition(config, normalised_groupings)
+        yield Composition(normalised_groupings)
 
 
 # base_comp must contain exactly 1 grouping
@@ -323,7 +330,11 @@ def _generate_compositions_for_buff (
 ):
     uptime_group1, uptime_group2 = base_comp.uptime(buff)
     needed_group1 = config.target_uptime - uptime_group1
+    allowed_group1 = (1000 if config.overstack_uptime is None
+                      else config.overstack_uptime - uptime_group1)
     needed_group2 = config.target_uptime - uptime_group2
+    allowed_group2 = (1000 if config.overstack_uptime is None
+                      else config.overstack_uptime - uptime_group2)
     if ((needed_group1 < config.uptime_comparison_tolerance and
          needed_group2 < config.uptime_comparison_tolerance)
     ):
@@ -340,11 +351,19 @@ def _generate_compositions_for_buff (
         max_usable_off_group = (
             0 if provides_off_group == 0
             else math.ceil(needed_group2 / provides_off_group))
-        max_allowed = config.max_group_size - len(base_comp.group1)
+        max_allowed = min(
+            config.max_group_size - len(base_comp.group1),
+            # doesn't catch cases where we overstack on a different buff, but
+            # all comps are checked again for overstack at the end
+            (config.max_group_size if provides_group == 0
+             else int(allowed_group1 / provides_group)),
+            (config.max_group_size if provides_off_group == 0
+             else int(allowed_group2 / provides_off_group)))
         max_to_use = min(max_allowed,
                          max(max_usable_group, max_usable_off_group))
         for num_used in range(1, max_to_use + 1):
-            comp = _SimpleComposition(base_comp.group1 + [role] * num_used,
+            comp = _SimpleComposition(config,
+                                      base_comp.group1 + [role] * num_used,
                                       base_comp.group2)
             yield from _generate_compositions_for_buff(
                 comp, roles_group1[role_index + 1:], roles_group2, buff, config)
@@ -361,11 +380,19 @@ def _generate_compositions_for_buff (
         max_usable_off_group = (
             0 if provides_off_group == 0
             else math.ceil(needed_group1 / provides_off_group))
-        max_allowed = config.max_group_size - len(base_comp.group2)
+        max_allowed = min(
+            config.max_group_size - len(base_comp.group2),
+            # doesn't catch cases where we overstack on a different buff, but
+            # all comps are checked again for overstack at the end
+            (config.max_group_size if provides_group == 0
+             else int(allowed_group2 / provides_group)),
+            (config.max_group_size if provides_off_group == 0
+             else int(allowed_group1 / provides_off_group)))
         max_to_use = min(max_allowed,
                          max(max_usable_group, max_usable_off_group))
         for num_used in range(1, max_to_use + 1):
-            comp = _SimpleComposition(base_comp.group1,
+            comp = _SimpleComposition(config,
+                                      base_comp.group1,
                                       base_comp.group2 + [role] * num_used)
             yield from _generate_compositions_for_buff(
                 comp, roles_group1, roles_group2[role_index + 1:], buff, config)
@@ -378,7 +405,7 @@ def generate_compositions (roles, config):
         if len(target_buffs) > 1:
             base_comps = generate(target_buffs[:-1])
         else:
-            base_comps = [_SimpleComposition.empty()]
+            base_comps = [_SimpleComposition.empty(config)]
         for base_comp in base_comps:
             roles_for_buff = roles_by_buff[target_buffs[-1]]
             yield from _generate_compositions_for_buff(
