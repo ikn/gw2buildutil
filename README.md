@@ -3,7 +3,7 @@ gw2build 0-next.
 Python 3 library for working with [Guild Wars 2](https://www.guildwars2.com/en/)
 builds.
 
-http://ikn.org.uk/gw2build
+http://ikn.org.uk/lib/gw2build
 
 # License
 
