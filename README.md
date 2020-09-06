@@ -21,4 +21,4 @@ supported.
 
 # Dependencies
 
-- Python 3 (>= 3.7)
+- [Python 3](http://www.python.org) (>= 3.7)
