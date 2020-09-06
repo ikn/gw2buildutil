@@ -1,4 +1,4 @@
-project_name := gw2build
+project_name := gw2buildutil
 
 INSTALL_DATA := install -m 644
 
