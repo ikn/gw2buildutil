@@ -6,8 +6,7 @@ import sys
 import json
 import pprint
 
-from .build import Build
-from . import definitions
+from .build import Build, BoonTargets
 
 
 class Configuration:
@@ -38,12 +37,12 @@ class BuffUptime:
         return f'BuffUptime<{str(self)}>'
 
     def uptime_for (self, target):
-        if self.target == definitions.boon_targets['5']:
-            if target == definitions.boon_targets['5']:
+        if self.target == BoonTargets.PARTY:
+            if target == BoonTargets.PARTY:
                 return self.uptime
             else:
                 return 0
-        else: # self.target == definitions.boon_targets['10']
+        else: # self.target == BoonTargets.SQUAD
             return self.uptime
 
     @staticmethod
@@ -84,7 +83,7 @@ class Role:
         simplified_uptimes = collections.defaultdict(
             lambda: collections.defaultdict(lambda: 0))
         for uptime in uptimes:
-            for target in definitions.boon_targets.values():
+            for target in BoonTargets:
                 simplified_uptimes[uptime.buff][target] = max(
                     simplified_uptimes[uptime.buff][target],
                     uptime.uptime_for(target))
@@ -95,7 +94,7 @@ class Role:
         uptimes_lookup1 = Role._simplify_uptimes(uptimes1)
         uptimes_lookup2 = Role._simplify_uptimes(uptimes2)
         for buff in set(uptimes_lookup1).union(uptimes_lookup2):
-            for target in definitions.boon_targets.values():
+            for target in BoonTargets:
                 uptime1 = uptimes_lookup1[buff][target]
                 uptime2 = uptimes_lookup2[buff][target]
                 if abs(uptime1 - uptime2) > config.uptime_comparison_tolerance:
@@ -107,7 +106,7 @@ class Role:
         uptimes_lookup1 = Role._simplify_uptimes(uptimes1)
         uptimes_lookup2 = Role._simplify_uptimes(uptimes2)
         for buff in set(uptimes_lookup1).union(uptimes_lookup2):
-            for target in definitions.boon_targets.values():
+            for target in BoonTargets:
                 uptime1 = uptimes_lookup1[buff][target]
                 uptime2 = uptimes_lookup2[buff][target]
                 if uptime1 - uptime2 < -config.uptime_comparison_tolerance:
@@ -222,11 +221,11 @@ class _SimpleComposition:
         for group in (1, 2):
             own_group = self.group1 if group == 1 else self.group2
             own_group_uptime = sum(
-                role.uptime(buff, definitions.boon_targets['5'])
+                role.uptime(buff, BoonTargets.PARTY)
                 for role in own_group)
             off_group = self.group2 if group == 1 else self.group1
             off_group_uptime = sum(
-                role.uptime(buff, definitions.boon_targets['10'])
+                role.uptime(buff, BoonTargets.SQUAD)
                 for role in off_group)
             result.append(own_group_uptime + off_group_uptime)
         return result
@@ -344,8 +343,8 @@ def _generate_compositions_for_buff (
     # when recurring, we don't pass through roles we've already checked, because
     # that will just produce reorderings of the same compositions
     for role_index, role in enumerate(roles_group1):
-        provides_group = role.uptime(buff, definitions.boon_targets['5'])
-        provides_off_group = role.uptime(buff, definitions.boon_targets['10'])
+        provides_group = role.uptime(buff, BoonTargets.PARTY)
+        provides_off_group = role.uptime(buff, BoonTargets.SQUAD)
         max_usable_group = (0 if provides_group == 0
                             else math.ceil(needed_group1 / provides_group))
         max_usable_off_group = (
@@ -373,8 +372,8 @@ def _generate_compositions_for_buff (
         return
 
     for role_index, role in enumerate(roles_group2):
-        provides_group = role.uptime(buff, definitions.boon_targets['5'])
-        provides_off_group = role.uptime(buff, definitions.boon_targets['10'])
+        provides_group = role.uptime(buff, BoonTargets.PARTY)
+        provides_off_group = role.uptime(buff, BoonTargets.SQUAD)
         max_usable_group = (0 if provides_group == 0
                             else math.ceil(needed_group2 / provides_group))
         max_usable_off_group = (

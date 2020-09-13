@@ -4,6 +4,8 @@ import re
 from .. import build, definitions
 from . import util, section
 
+_SKIP_SECTION = object()
+
 
 title_pattern = re.compile(r'^'
     '(?P<mode>.+) '
@@ -18,8 +20,8 @@ def parse_title (title):
                               '{}'.format(repr(title)))
     fields = match.groupdict()
 
-    game_modes = definitions.game_modes.get(fields['mode'])
-    if game_modes is None:
+    game_mode = build.GameModes.from_id(fields['mode'])
+    if game_mode is None:
         raise util.ParseError('title doesn\'t start with a known '
                               'game modes identifier: {}'.format(repr(title)))
     profession = definitions.profession.get(fields['prof'])
@@ -27,7 +29,7 @@ def parse_title (title):
         raise util.ParseError('title has a missing or incorrect profession '
                               'identifier: {}'.format(repr(title)))
     labels = [l.strip() for l in fields['labels'].split(',')]
-    return build.BuildMetadata(game_modes, profession, labels)
+    return build.BuildMetadata(game_mode, profession, labels)
 
 
 section_parsers = {
@@ -37,7 +39,7 @@ section_parsers = {
     'notes': section.notes,
     'boon notes': section.boonnotes,
     'encounters': section.encounters,
-    'calculation': False,
+    'calculation': _SKIP_SECTION,
 }
 
 
@@ -50,7 +52,7 @@ def parse_body (f, meta):
         section_module = section_parsers.get(title)
         if section_module is None:
             raise util.ParseError('unknown section: {}'.format(repr(title)))
-        elif section_module is False:
+        elif section_module is _SKIP_SECTION:
             for line in section_lines:
                 pass
         else:

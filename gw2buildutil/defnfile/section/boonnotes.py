@@ -9,7 +9,6 @@ uptimes_pattern = re.compile(r'^'
     '$')
 
 def parse_uptime (line):
-    # 85% 5-alacrity, 40% 10-alacrity, 5-quickness, 40% 10-quickness
     uptimes = []
     if uptimes_pattern.match(line) is None:
         raise util.ParseError('boon uptime definition doesn\'t match expected '
@@ -24,12 +23,12 @@ def parse_uptime (line):
         target_text, boon_text = rest.split('-')
 
         uptime = None if uptime_text is None else int(uptime_text[:-1])
-        target = definitions.boon_targets.get(target_text)
+        target = build.BoonTargets.from_id(target_text)
         if target is None:
             raise util.ParseError(
                 'boon uptime definition has a missing or incorrect target '
                 'count identifier: {}'.format(repr(boon_uptime_text)))
-        boon = definitions.boons.get(boon_text)
+        boon = build.Boons.from_id(boon_text)
         if boon is None:
             raise util.ParseError(
                 'boon uptime definition has a missing or incorrect boon '
