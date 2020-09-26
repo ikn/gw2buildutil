@@ -1,12 +1,13 @@
 import abc
 import inspect
+import re
 
 from .. import build, util
 
 
 class Entity (abc.ABC, util.Identified):
-    def __init__ (self, ids, api_id):
-        util.Identified.__init__ (self, ids)
+    def __init__ (self, api_id, ids, non_unique_ids=()):
+        util.Identified.__init__ (self, ids, non_unique_ids)
         self.api_id = api_id
 
     def __eq__ (self, other):
@@ -59,13 +60,15 @@ class Skill (Entity):
         ids = [id_]
         if full_id != id_:
             ids.append(full_id)
+
+        aliases = []
         if ' ' in id_:
             abbr = ''.join(word[0] for word in id_.split(' ') if word)
-            ids.append(abbr)
+            aliases.append(abbr)
             if full_id.endswith('!'):
-                ids.append(abbr + '!')
+                aliases.append(abbr + '!')
 
-        Entity.__init__(self, ids, api_id)
+        Entity.__init__(self, api_id, ids, aliases)
         self.name = name
 
     @staticmethod
@@ -100,16 +103,12 @@ class Skill (Entity):
 
 class Profession (Entity):
     def __init__ (self, api_id, name):
-        Entity.__init__(self, name.lower(), api_id)
+        Entity.__init__(self, api_id, name)
         self.name = name
 
     @staticmethod
     def path ():
         return ('professions',)
-
-    @staticmethod
-    def crawl_dependencies ():
-        return set([Skill])
 
     @staticmethod
     def from_api (crawler, storage, result):
@@ -126,7 +125,7 @@ class Profession (Entity):
 
 class Specialisation (Entity):
     def __init__ (self, api_id, name, profession, is_elite):
-        Entity.__init__(self, name.lower(), api_id)
+        Entity.__init__(self, api_id, name)
         self.name = name
         self.profession = profession
         self.is_elite = is_elite
@@ -167,7 +166,7 @@ class RangerPet (Entity):
         if full_id != id_:
             ids.append(full_id)
 
-        Entity.__init__(self, ids, api_id)
+        Entity.__init__(self, api_id, ids)
         self.name = name
 
     @staticmethod
@@ -189,7 +188,7 @@ class RangerPet (Entity):
 
 class Stats (Entity):
     def __init__ (self, api_id, name):
-        full_id = name.lower()
+        full_id = name
         id_ = full_id
         if id_.endswith('\'s'):
             id_ = id_[:-len('\'s')]
@@ -197,7 +196,7 @@ class Stats (Entity):
         if full_id != id_:
             ids.append(full_id)
 
-        Entity.__init__(self, ids, api_id)
+        Entity.__init__(self, api_id, ids)
         self.name = name
 
     @staticmethod
@@ -230,7 +229,7 @@ class PvpStats (Entity):
         if id_.endswith(' amulet'):
             id_ = id_[:-len(' amulet')]
 
-        Entity.__init__(self, id_, api_id)
+        Entity.__init__(self, api_id, id_)
         self.name = name
 
     @staticmethod
@@ -248,6 +247,92 @@ class PvpStats (Entity):
     def from_data (storage, data):
         api_id, name = data
         return PvpStats(api_id, name)
+
+
+sigil_pattern = re.compile(r'^'
+    r'(?P<tier>\w+) Sigil of (the )?(?P<name>[\w\' ]+)'
+    r'$')
+
+class Sigil (Entity):
+    def __init__ (self, api_id, name):
+        match = sigil_pattern.match(name)
+        if match is None:
+            raise ValueError(f'unexpected sigil name format: {name}')
+        fields = match.groupdict()
+        tier = build.UpgradeTiers(fields['tier'].lower())
+        ids = [f'{tier.value} {fields["name"]}']
+        if tier == build.UpgradeTiers.SUPERIOR:
+            ids.append(fields['name'])
+
+        Entity.__init__(self, api_id, ids)
+        self.name = name
+        self.tier = tier
+
+    @staticmethod
+    def path ():
+        return ('items',)
+
+    @staticmethod
+    def from_api (crawler, storage, result):
+        if result['type'] != 'UpgradeComponent':
+            return None
+        if result['details']['type'] != 'Sigil':
+            return None
+        if result['name'] == 'Legendary Sigil':
+            return None
+
+        return Sigil(result['id'], result['name'])
+
+    def to_data (self):
+        return (self.api_id, self.name)
+
+    @staticmethod
+    def from_data (storage, data):
+        api_id, name = data
+        return Sigil(api_id, name)
+
+
+rune_pattern = re.compile(r'^'
+    r'(?P<tier>\w+) Rune of (the )?(?P<name>[\w\' ]+)'
+    r'$')
+
+class Rune (Entity):
+    def __init__ (self, api_id, name):
+        match = rune_pattern.match(name)
+        if match is None:
+            raise ValueError(f'unexpected rune name format: {name}')
+        fields = match.groupdict()
+        tier = build.UpgradeTiers(fields['tier'].lower())
+        ids = [f'{tier.value} {fields["name"]}']
+        if tier == build.UpgradeTiers.SUPERIOR:
+            ids.append(fields['name'])
+
+        Entity.__init__(self, api_id, ids)
+        self.name = name
+        self.tier = tier
+
+    @staticmethod
+    def path ():
+        return ('items',)
+
+    @staticmethod
+    def from_api (crawler, storage, result):
+        if result['type'] != 'UpgradeComponent':
+            return None
+        if result['details']['type'] != 'Rune':
+            return None
+        if result['name'] in ('', 'Legendary Rune'):
+            return None
+
+        return Rune(result['id'], result['name'])
+
+    def to_data (self):
+        return (self.api_id, self.name)
+
+    @staticmethod
+    def from_data (storage, data):
+        api_id, name = data
+        return Rune(api_id, name)
 
 
 BUILTIN_TYPES = [

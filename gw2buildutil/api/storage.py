@@ -24,7 +24,7 @@ class Storage (abc.ABC):
         pass
 
     @abc.abstractmethod
-    def from_id (self, entity_type, id_):
+    def store (self, entity):
         pass
 
     @abc.abstractmethod
@@ -32,11 +32,11 @@ class Storage (abc.ABC):
         pass
 
     @abc.abstractmethod
-    def store (self, entity):
+    def from_id (self, entity_type, id_):
         pass
 
     @abc.abstractmethod
-    def from_api_id (self, entity_type, id_):
+    def from_api_id (self, entity_type, api_id):
         pass
 
     @abc.abstractmethod
@@ -98,31 +98,29 @@ class FileStorage (Storage):
         entity_type = type(entity)
         data = json.dumps(entity.to_data())
 
-        # always use the latest entity for the first ('main') ID
-        self._db[self._id_key(entity_type, entity.ids[0])] = data
-
-        for id_ in entity.ids[1:]:
-            key = self._id_key(entity_type, id_)
-            # if multiple entities use the same ID, don't allow either of them
-            # to use it
-            if key in self._db:
-                self._db[key] = ''
-            else:
-                self._db[key] = data
-
-        # entities with the same API ID are the same entity
+        # use latest if conflict
         self._db[self._api_id_key(entity_type, entity.api_id)] = data
+
+        for id_ in entity.ids:
+            id_key = self._id_key(entity_type, id_)
+            # use latest if conflict
+            self._db[id_key] = data
+
+        for id_ in entity.aliases:
+            alias_key = self._id_key(entity_type, id_)
+            # don't store if conflict
+            if alias_key in self._db:
+                self._db[alias_key] = ''
+            else:
+                self._db[alias_key] = data
 
     def exists (self, entity_type, api_id):
         return self._api_id_key(entity_type, api_id) in self._db
 
     def _from_key (self, entity_type, key):
-        try:
-            data = self._db[key]
-        except KeyError:
-            return None
+        data = self._db[key]
         if not data: # multiple entities used the same key
-            return None
+            raise KeyError(key)
         return entity_type.from_data(self, json.loads(data))
 
     def from_id (self, entity_type, id_):
