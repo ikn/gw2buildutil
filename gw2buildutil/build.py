@@ -1,24 +1,19 @@
 import enum
 
-
-class _Identified:
-    def __init__ (self, ids):
-        ids = (ids,) if isinstance(ids, str) else ids
-        self.id_ = ids[0]
-        self.all_ids = tuple(ids)
+from . import util
 
 
 def _enum_id_lookup (enum_cls):
     lookup = {}
     for item in enum_cls:
-        for id_ in item.value.all_ids:
+        for id_ in item.value.ids:
             lookup[id_] = item
     return lookup
 
 
-class GameMode (_Identified):
-    def __init__ (self, ids, name, suitable_game_modes):
-        _Identified.__init__(self, ids)
+class GameMode (util.Identified):
+    def __init__ (self, name, suitable_game_modes):
+        util.Identified.__init__(self, name)
         self.name = name
         self.suitable_game_modes = tuple(suitable_game_modes)
 
@@ -27,45 +22,33 @@ class GameMode (_Identified):
 
 
 class GameModes (enum.Enum):
-    OPEN_WORLD = GameMode('open world', 'Open World',
-                          ('open world', 'dungeons'))
-    DUNGEONS = GameMode('dungeons', 'Dungeons', ('dungeons',))
-    FRACTALS = GameMode('fractals', 'Fractals',
+    OPEN_WORLD = GameMode('Open World', ('open world', 'dungeons'))
+    DUNGEONS = GameMode('Dungeons', ('dungeons',))
+    FRACTALS = GameMode('Fractals',
                          ('unorganised fractals', 'dungeons', 'open world'))
-    RAIDS = GameMode('raids', 'Raids',
-                      ('casual raids', 'casual organised fractals'))
-    PVP = GameMode('pvp', 'PvP', ('PvP',))
-    WVW = GameMode('wvw', 'WvW', ('WvW',))
+    RAIDS = GameMode('Raids', ('casual raids', 'casual organised fractals'))
+    PVP = GameMode('PvP', ('PvP',))
+    WVW = GameMode('WvW', ('WvW',))
 
     @staticmethod
     def from_id (id_):
-        return _game_modes_id_lookup[id_]
+        return _game_modes_id_lookup[id_.lower()]
 
 _game_modes_id_lookup = _enum_id_lookup(GameModes)
 
 
-class Profession:
-    def __init__ (self, profession, elite_spec=None):
-        self.profession = profession
-        self.elite_spec = elite_spec
-
-    def __str__ (self):
-        return self.profession if self.elite_spec is None else self.elite_spec
-
-    def same_base (self, other):
-        return self.profession == other.profession
-
-
 class BuildMetadata:
-    def __init__ (self, game_mode, profession, labels):
+    def __init__ (self, game_mode, profession, elite_spec, labels):
         self.game_mode = game_mode
         self.profession = profession
+        self.elite_spec = elite_spec
         self.labels = tuple(labels)
 
     @property
     def title (self):
-        return '{} {}: {}'.format(self.game_mode, self.profession,
-                                  ', '.join(self.labels))
+        spec = self.profession if self.elite_spec is None else self.elite_spec
+        return (f'{self.game_mode.value.name} {spec.name}: '
+                f'{", ".join(self.labels)}')
 
 
 class TextBody:
@@ -77,98 +60,9 @@ class MarkdownBody (TextBody):
         self.text = text
 
 
-class Stats (_Identified):
-    def __init__ (self, ids, name):
-        _Identified.__init__(self, ids)
-        self.name = name
-
-
-class StatsEnum (enum.Enum):
-    APOTHECARY = Stats('apothecary', 'Apothecary')
-    ASSASSIN = Stats('assassin', 'Assassin')
-    BERSERKER = Stats('berserker', 'Berserker')
-    BRINGER = Stats('bringer', 'Bringer')
-    CAPTAIN = Stats('captain', 'Captain')
-    CARRION = Stats('carrion', 'Carrion')
-    CAVALIER = Stats('cavalier', 'Cavalier')
-    CELESTIAL = Stats('celestial', 'Celestial')
-    CLERIC = Stats('cleric', 'Cleric')
-    COMMANDER = Stats('commander', 'Commander')
-    CRUSADER = Stats('crusader', 'Crusader')
-    DIRE = Stats('dire', 'Dire')
-    DIVINER = Stats('diviner', 'Diviner')
-    GIVER = Stats('giver', 'Giver')
-    GRIEVING = Stats('grieving', 'Grieving')
-    HARRIER = Stats('harrier', 'Harrier')
-    KNIGHT = Stats('knight', 'Knight')
-    MAGI = Stats('magi', 'Magi')
-    MARAUDER = Stats('marauder', 'Marauder')
-    MARSHAL = Stats('marshal', 'Marshal')
-    MINSTREL = Stats('minstrel', 'Minstrel')
-    NOMAD = Stats('nomad', 'Nomad')
-    PLAGUEDOCTOR = Stats('plaguedoctor', 'Plaguedoctor')
-    RABID = Stats('rabid', 'Rabid')
-    RAMPAGER = Stats('rampager', 'Rampager')
-    SENTINEL = Stats('sentinel', 'Sentinel')
-    SERAPH = Stats('seraph', 'Seraph')
-    SETTLER = Stats('settler', 'Settler')
-    SHAMAN = Stats('shaman', 'Shaman')
-    SINISTER = Stats('sinister', 'Sinister')
-    SOLDIER = Stats('soldier', 'Soldier')
-    TRAILBLAZER = Stats('trailblazer', 'Trailblazer')
-    VALKYRIE = Stats('valkyrie', 'Valkyrie')
-    VIGILANT = Stats('vigilant', 'Vigilant')
-    VIPER = Stats('viper', 'Viper')
-    WANDERER = Stats('wanderer', 'Wanderer')
-    ZEALOT = Stats('zealot', 'Zealot')
-
-    @staticmethod
-    def from_id (id_):
-        return _stats_id_lookup[id_]
-
-_stats_id_lookup = _enum_id_lookup(StatsEnum)
-
-
-class PvpStatsEnum (enum.Enum):
-    ASSASSIN = Stats('assassin', 'Assassin')
-    AVATAR = Stats('avatar', 'Avatar')
-    BARBARIAN = Stats('barbarian', 'Barbarian')
-    BERSERKER = Stats('berserker', 'Berserker')
-    CARRION = Stats('carrion', 'Carrion')
-    CAVALIER = Stats('cavalier', 'Cavalier')
-    CELESTIAL = Stats('celestial', 'Celestial')
-    DEADSHOT = Stats('deadshot', 'Deadshot')
-    DEMOLISHER = Stats('demolisher', 'Demolisher')
-    DESTROYER = Stats('destroyer', 'Destroyer')
-    DIVINER = Stats('diviner', 'Diviner')
-    GRIEVING = Stats('grieving', 'Grieving')
-    HARRIER = Stats('harrier', 'Harrier')
-    KNIGHT = Stats('knight', 'Knight')
-    MARAUDER = Stats('marauder', 'Marauder')
-    MARSHAL = Stats('marshal', 'Marshal')
-    MENDER = Stats('mender', 'Mender')
-    PALADIN = Stats('paladin', 'Paladin')
-    RABID = Stats('rabid', 'Rabid')
-    RAMPAGER = Stats('rampager', 'Rampager')
-    SAGE = Stats('sage', 'Sage')
-    SEEKER = Stats('seeker', 'Seeker')
-    SINISTER = Stats('sinister', 'Sinister')
-    SWASHBUCKLER = Stats('swashbuckler', 'Swashbuckler')
-    VALKYRIE = Stats('valkyrie', 'Valkyrie')
-    VIPER = Stats('viper', 'Viper')
-    WANDERER = Stats('wanderer', 'Wanderer')
-    WIZARD = Stats('wizard', 'Wizard')
-
-    @staticmethod
-    def from_id (id_):
-        return _pvp_stats_id_lookup[id_]
-
-_pvp_stats_id_lookup = _enum_id_lookup(PvpStatsEnum)
-
-
-class WeaponType (_Identified):
+class WeaponType (util.Identified):
     def __init__ (self, ids, hands):
-        _Identified.__init__(self, ids)
+        util.Identified.__init__(self, ids)
         self.hands = hands
 
 
@@ -197,14 +91,14 @@ class WeaponTypes (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _weapon_types_id_lookup[id_]
+        return _weapon_types_id_lookup[id_.lower()]
 
 _weapon_types_id_lookup = _enum_id_lookup(WeaponTypes)
 
 
-class WeaponHand (_Identified):
+class WeaponHand (util.Identified):
     def __init__ (self, ids, hands):
-        _Identified.__init__(self, ids)
+        util.Identified.__init__(self, ids)
         self.hands = hands
 
 
@@ -215,7 +109,7 @@ class WeaponHands (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _weapon_hands_id_lookup[id_]
+        return _weapon_hands_id_lookup[id_.lower()]
 
 _weapon_hands_id_lookup = _enum_id_lookup(WeaponHands)
 
@@ -232,42 +126,42 @@ class Sigil:
         self.tier = tier
 
 
-class PvpSigil (_Identified):
-    def __init__ (self, ids, name):
-        _Identified.__init__(self, ids)
+class PvpSigil (util.Identified):
+    def __init__ (self, name):
+        util.Identified.__init__(self, name)
         self.name = name
 
 
 class PvpSigils (enum.Enum):
-    ABSORPTION = PvpSigil('absorption', 'Absorption')
-    AGONY = PvpSigil('agony', 'Agony')
-    BATTLE = PvpSigil('battle', 'Battle')
-    CLEANSING = PvpSigil('cleansing', 'Cleansing')
-    COMPOUNDING = PvpSigil('compounding', 'Compounding')
-    CONFUSION = PvpSigil('confusion', 'Confusion')
-    COURAGE = PvpSigil('courage', 'Courage')
-    DOOM = PvpSigil('doom', 'Doom')
-    ENERGY = PvpSigil('energy', 'Energy')
-    ENHANCEMENT = PvpSigil('enhancement', 'Enhancement')
-    ESCAPE = PvpSigil('escape', 'Escape')
-    EXPLOITATION = PvpSigil('exploitation', 'Exploitation')
-    EXPOSURE = PvpSigil('exposure', 'Exposure')
-    INTELLIGENCE = PvpSigil('intelligence', 'Intelligence')
-    MISERY = PvpSigil('misery', 'Misery')
-    OPPORTUNITY = PvpSigil('opportunity', 'Opportunity')
-    PERIL = PvpSigil('peril', 'Peril')
-    PURGING = PvpSigil('purging', 'Purging')
-    REVOCATION = PvpSigil('revocation', 'Revocation')
-    RUTHLESSNESS = PvpSigil('ruthlessness', 'Ruthlessness')
-    SAVAGERY = PvpSigil('savagery', 'Savagery')
-    SEPARATION = PvpSigil('separation', 'Separation')
-    SMOLDERING = PvpSigil('smoldering', 'Smoldering')
-    STAGNATION = PvpSigil('stagnation', 'Stagnation')
-    VENOM = PvpSigil('venom', 'Venom')
+    ABSORPTION = PvpSigil('Absorption')
+    AGONY = PvpSigil('Agony')
+    BATTLE = PvpSigil('Battle')
+    CLEANSING = PvpSigil('Cleansing')
+    COMPOUNDING = PvpSigil('Compounding')
+    CONFUSION = PvpSigil('Confusion')
+    COURAGE = PvpSigil('Courage')
+    DOOM = PvpSigil('Doom')
+    ENERGY = PvpSigil('Energy')
+    ENHANCEMENT = PvpSigil('Enhancement')
+    ESCAPE = PvpSigil('Escape')
+    EXPLOITATION = PvpSigil('Exploitation')
+    EXPOSURE = PvpSigil('Exposure')
+    INTELLIGENCE = PvpSigil('Intelligence')
+    MISERY = PvpSigil('Misery')
+    OPPORTUNITY = PvpSigil('Opportunity')
+    PERIL = PvpSigil('Peril')
+    PURGING = PvpSigil('Purging')
+    REVOCATION = PvpSigil('Revocation')
+    RUTHLESSNESS = PvpSigil('Ruthlessness')
+    SAVAGERY = PvpSigil('Savagery')
+    SEPARATION = PvpSigil('Separation')
+    SMOLDERING = PvpSigil('Smoldering')
+    STAGNATION = PvpSigil('Stagnation')
+    VENOM = PvpSigil('Venom')
 
     @staticmethod
     def from_id (id_):
-        return _pvp_sigils_id_lookup[id_]
+        return _pvp_sigils_id_lookup[id_.lower()]
 
 _pvp_sigils_id_lookup = _enum_id_lookup(PvpSigils)
 
@@ -305,47 +199,104 @@ class Rune:
         self.tier = tier
 
 
-class PvpRune (_Identified):
-    def __init__ (self, ids, name):
-        _Identified.__init__(self, ids)
+class PvpRune (util.Identified):
+    def __init__ (self, name):
+        util.Identified.__init__(self, name)
         self.name = name
 
 
 class PvpRunes (enum.Enum):
-    ALTRUISM = PvpRune('altruism', 'Altruism')
-    EVASION = PvpRune('evasion', 'Evasion')
-    EXUBERANCE = PvpRune('exuberance', 'Exuberance')
-    LEADERSHIP = PvpRune('leadership', 'Leadership')
-    RADIANCE = PvpRune('radiance', 'Radiance')
-    RESISTANCE = PvpRune('resistance', 'Resistance')
-    SCAVENGING = PvpRune('scavenging', 'Scavenging')
-    ARISTOCRACY = PvpRune('aristocracy', 'Aristocracy')
-    BERSERKER = PvpRune('berserker', 'Berserker')
-    CHRONOMANCER = PvpRune('chronomancer', 'Chronomancer')
-    DAREDEVIL = PvpRune('daredevil', 'Daredevil')
-    DRAGONHUNTER = PvpRune('dragonhunter', 'Dragonhunter')
-    DRUID = PvpRune('druid', 'Druid')
-    HERALD = PvpRune('herald', 'Herald')
-    MAD = PvpRune('Mad', 'Mad King')
-    REAPER = PvpRune('reaper', 'Reaper')
-    REVENANT = PvpRune('revenant', 'Revenant')
-    SCRAPPER = PvpRune('scrapper', 'Scrapper')
-    SUNLESS = PvpRune('sunless', 'Sunless')
-    TEMPEST = PvpRune('tempest', 'Tempest')
-    TRAPPER = PvpRune('trapper', 'Trapper')
-    TRAVELER = PvpRune('traveler', 'Traveler')
-    THORNS = PvpRune('thorns', 'Thorns')
+    ADVENTURE = PvpRune('Adventure')
+    AIR = PvpRune('Air')
+    ALTRUISM = PvpRune('Altruism')
+    BALTHAZAR = PvpRune('Balthazar')
+    DIVINITY = PvpRune('Divinity')
+    DWAYNA = PvpRune('Dwayna')
+    EARTH = PvpRune('Earth')
+    EVASION = PvpRune('Evasion')
+    EXUBERANCE = PvpRune('Exuberance')
+    FIRE = PvpRune('Fire')
+    GRENTH = PvpRune('Grenth')
+    HOELBRAK = PvpRune('Hoelbrak')
+    ICE = PvpRune('Ice')
+    INFILTRATION = PvpRune('Infiltration')
+    LEADERSHIP = PvpRune('Leadership')
+    LYSSA = PvpRune('Lyssa')
+    MELANDRU = PvpRune('Melandru')
+    ORR = PvpRune('Orr')
+    RADIANCE = PvpRune('Radiance')
+    RAGE = PvpRune('Rage')
+    RATA_SUM = PvpRune('Rata Sum')
+    RESISTANCE = PvpRune('Resistance')
+    SANCTUARY = PvpRune('Sanctuary')
+    SCAVENGING = PvpRune('Scavenging')
+    SPEED = PvpRune('Speed')
+    STRENGTH = PvpRune('Strength')
+    THORNS = PvpRune('Thorns')
+    VAMPIRISM = PvpRune('Vampirism')
+    AFFLICTED = PvpRune('Afflicted')
+    ARISTOCRACY = PvpRune('Aristocracy')
+    BAELFIRE = PvpRune('Baelfire')
+    BERSERKER = PvpRune('Berserker')
+    CENTAUR = PvpRune('Centaur')
+    CHRONOMANCER = PvpRune('Chronomancer')
+    CITADEL = PvpRune('Citadel')
+    DAREDEVIL = PvpRune('Daredevil')
+    DEADEYE = PvpRune('Deadeye')
+    DOLYAK = PvpRune('Dolyak')
+    DRAGONHUNTER = PvpRune('Dragonhunter')
+    DRUID = PvpRune('Druid')
+    EAGLE = PvpRune('Eagle')
+    ELEMENTALIST = PvpRune('Elementalist')
+    ENGINEER = PvpRune('Engineer')
+    FIGHTER = PvpRune('Fighter')
+    FIREBRAND = PvpRune('Firebrand')
+    FLAME_LEGION = PvpRune('Flame Legion')
+    FLOCK = PvpRune('Flock')
+    FORGE = PvpRune('Forge')
+    GROVE = PvpRune('Grove')
+    GUARDIAN = PvpRune('Guardian')
+    HERALD = PvpRune('Herald')
+    HOLOSMITH = PvpRune('Holosmith')
+    KRAIT = PvpRune('Krait')
+    LYNX = PvpRune('Lynx')
+    MAD_KING = PvpRune('Mad King')
+    MESMER = PvpRune('Mesmer')
+    MIRAGE = PvpRune('Mirage')
+    MONK = PvpRune('Monk')
+    NECROMANCER = PvpRune('Necromancer')
+    NIGHTMARE = PvpRune('Nightmare')
+    RANGER = PvpRune('Ranger')
+    REAPER = PvpRune('Reaper')
+    RENEGADE = PvpRune('Renegade')
+    REVENANT = PvpRune('Revenant')
+    SCHOLAR = PvpRune('Scholar')
+    SCRAPPER = PvpRune('Scrapper')
+    SOLDIER = PvpRune('Soldier')
+    SOULBEAST = PvpRune('Soulbeast')
+    SPELLBREAKER = PvpRune('Spellbreaker')
+    SUNLESS = PvpRune('Sunless')
+    SVANIR = PvpRune('Svanir')
+    TEMPEST = PvpRune('Tempest')
+    THIEF = PvpRune('Thief')
+    TRAPPER = PvpRune('Trapper')
+    TRAVELER = PvpRune('Traveler')
+    UNDEAD = PvpRune('Undead')
+    WARRIOR = PvpRune('Warrior')
+    WATER = PvpRune('Water')
+    WEAVER = PvpRune('Weaver')
+    WURM = PvpRune('Wurm')
 
     @staticmethod
     def from_id (id_):
-        return _pvp_runes_id_lookup[id_]
+        return _pvp_runes_id_lookup[id_.lower()]
 
 _pvp_runes_id_lookup = _enum_id_lookup(PvpRunes)
 
 
-class ArmourType (_Identified):
+class ArmourType (util.Identified):
     def __init__ (self, ids):
-        _Identified.__init__(self, ids)
+        util.Identified.__init__(self, ids)
 
 
 class ArmourTypes (enum.Enum):
@@ -358,7 +309,7 @@ class ArmourTypes (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _armour_types_id_lookup[id_]
+        return _armour_types_id_lookup[id_.lower()]
 
 _armour_types_id_lookup = _enum_id_lookup(ArmourTypes)
 
@@ -414,9 +365,9 @@ class Trinkets:
                              '{}'.format(list(self.pieces.keys())))
 
 
-class GearGroup (_Identified):
+class GearGroup (util.Identified):
     def __init__ (self, ids):
-        _Identified.__init__(self, ids)
+        util.Identified.__init__(self, ids)
 
 
 class GearGroups (enum.Enum):
@@ -428,7 +379,7 @@ class GearGroups (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _gear_groups_id_lookup[id_]
+        return _gear_groups_id_lookup[id_.lower()]
 
 _gear_groups_id_lookup = _enum_id_lookup(GearGroups)
 _gear_groups_id_lookup.update(_weapon_types_id_lookup)
@@ -511,24 +462,26 @@ class Skills:
                              f'{len(self.utilities)}')
 
 
-class RevenantLegend (_Identified):
-    def __init__ (self, ids, name):
-        _Identified.__init__(self, ids)
+class RevenantLegend (util.Identified):
+    def __init__ (self, name, extra_ids=()):
+        ids = (name,) + (
+            (extra_ids,) if isinstance(extra_ids, str) else tuple(extra_ids))
+        util.Identified.__init__(self, ids)
         self.name = name
 
 
 class RevenantLegends (enum.Enum):
-    ASSASSIN = RevenantLegend(('assassin', 'shiro'), 'Assassin')
-    CENTAUR = RevenantLegend(('centaur', 'ventari'), 'Centaur')
-    DEMON = RevenantLegend(('demon', 'mallyx'), 'Demon')
-    DWARF = RevenantLegend(('dwarf', 'jalis'), 'Dwarf')
+    ASSASSIN = RevenantLegend('Assassin', ('shiro',))
+    CENTAUR = RevenantLegend('Centaur', ('ventari',))
+    DEMON = RevenantLegend('Demon', ('mallyx',))
+    DWARF = RevenantLegend('Dwarf', ('jalis',))
 
-    DRAGON = RevenantLegend(('dragon', 'glint', 'herald'), 'Dragon')
-    RENEGADE = RevenantLegend(('renegade', 'kalla'), 'Renegade')
+    DRAGON = RevenantLegend('Dragon', ('glint', 'herald'))
+    RENEGADE = RevenantLegend('Renegade', ('kalla',))
 
     @staticmethod
     def from_id (id_):
-        return _revenant_legends_id_lookup[id_]
+        return _revenant_legends_id_lookup[id_.lower()]
 
 _revenant_legends_id_lookup = _enum_id_lookup(RevenantLegends)
 
@@ -560,36 +513,38 @@ class Intro:
         self.profession_options = profession_options
 
 
-class Boon (_Identified):
-    def __init__ (self, ids, name):
-        _Identified.__init__(self, ids)
+class Boon (util.Identified):
+    def __init__ (self, name, extra_ids=()):
+        ids = (name,) + (
+            (extra_ids,) if isinstance(extra_ids, str) else tuple(extra_ids))
+        util.Identified.__init__(self, ids)
         self.name = name
 
 
 class Boons (enum.Enum):
-    AEGIS = Boon('aegis', 'Aegis')
-    ALACRITY = Boon('alacrity', 'Alacrity')
-    FURY = Boon('fury', 'Fury')
-    MIGHT = Boon('might', 'Might')
-    PROTECTION = Boon('protection', 'Protection')
-    QUICKNESS = Boon('quickness', 'Quickness')
-    REGENERATION = Boon('regeneration', 'Regeneration')
-    RESISTANCE = Boon('resistance', 'Resistance')
-    RETALIATION = Boon('retaliation', 'Retaliation')
-    STABILITY = Boon('stability', 'Stability')
-    SWIFTNESS = Boon('swiftness', 'Swiftness')
-    VIGOUR = Boon('vigour', 'Vigour')
+    AEGIS = Boon('Aegis')
+    ALACRITY = Boon('Alacrity')
+    FURY = Boon('Fury')
+    MIGHT = Boon('Might')
+    PROTECTION = Boon('Protection')
+    QUICKNESS = Boon('Quickness')
+    REGENERATION = Boon('Regeneration')
+    RESISTANCE = Boon('Resistance')
+    RETALIATION = Boon('Retaliation')
+    STABILITY = Boon('Stability')
+    SWIFTNESS = Boon('Swiftness')
+    VIGOUR = Boon('Vigour', ('vigor',))
 
     @staticmethod
     def from_id (id_):
-        return _boons_id_lookup[id_]
+        return _boons_id_lookup[id_.lower()]
 
 _boons_id_lookup = _enum_id_lookup(Boons)
 
 
-class BoonTarget (_Identified):
+class BoonTarget (util.Identified):
     def __init__ (self, num, name):
-        _Identified.__init__(self, (str(num), name))
+        util.Identified.__init__(self, (str(num), name))
         self.num = num
         self.name = name
 
@@ -600,7 +555,7 @@ class BoonTargets (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _boon_targets_id_lookup[id_]
+        return _boon_targets_id_lookup[id_.lower()]
 
 _boon_targets_id_lookup = _enum_id_lookup(BoonTargets)
 

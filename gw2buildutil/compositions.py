@@ -31,7 +31,7 @@ class BuffUptime:
 
     def __str__ (self):
         prefix = '' if self._uptime is None else f'{self.uptime * 100:.0f}% '
-        return f'{prefix}{self.target.name} {self.buff.name}'
+        return f'{prefix}{self.target.value.name} {self.buff.value.name}'
 
     def __repr__ (self):
         return f'BuffUptime<{str(self)}>'

@@ -336,8 +336,8 @@ class Rune (Entity):
 
 
 food_prefixes = (
-    'plate', 'bowl', 'can', 'cup', 'jug', 'bit', 'slice', 'loaf', 'strip',
-    'glass', 'handful', 'piece',
+    'plate', 'bowl', 'can', 'pot', 'cup', 'jug', 'bit', 'slice', 'loaf',
+    'strip', 'glass', 'handful', 'piece',
 )
 
 class Food (Entity):

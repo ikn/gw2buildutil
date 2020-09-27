@@ -1,6 +1,6 @@
 import re
 
-from ... import build, definitions
+from ... import build
 from .. import util
 
 
@@ -39,7 +39,7 @@ def parse_uptime (line):
     return uptimes
 
 
-def parse (lines, meta):
+def parse (lines, meta, api_storage):
     paragraphs = list(util.group_paragraphs(
         util.strip_empty_lines(lines, inner='collapse')))
     if len(paragraphs) < 1:
