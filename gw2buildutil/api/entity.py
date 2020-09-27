@@ -335,6 +335,73 @@ class Rune (Entity):
         return Rune(api_id, name)
 
 
+food_prefixes = (
+    'plate', 'bowl', 'can', 'cup', 'jug', 'bit', 'slice', 'loaf', 'strip',
+    'glass', 'handful', 'piece',
+)
+
+class Food (Entity):
+    def __init__ (self, api_id, name):
+        full_id = name.lower()
+        aliases = []
+        for prefix in food_prefixes:
+            full_prefix = f'{prefix} of '
+            if full_id.startswith(full_prefix):
+                aliases.append(full_id[len(full_prefix):])
+                break
+
+        Entity.__init__(self, api_id, full_id, aliases)
+        self.name = name
+
+    @staticmethod
+    def path ():
+        return ('items',)
+
+    @staticmethod
+    def from_api (crawler, storage, result):
+        if result['type'] != 'Consumable':
+            return None
+        if result['details']['type'] != 'Food':
+            return None
+
+        return Food(result['id'], result['name'])
+
+    def to_data (self):
+        return (self.api_id, self.name)
+
+    @staticmethod
+    def from_data (storage, data):
+        api_id, name = data
+        return Food(api_id, name)
+
+
+class UtilityConsumable (Entity):
+    def __init__ (self, api_id, name):
+        Entity.__init__(self, api_id, name)
+        self.name = name
+
+    @staticmethod
+    def path ():
+        return ('items',)
+
+    @staticmethod
+    def from_api (crawler, storage, result):
+        if result['type'] != 'Consumable':
+            return None
+        if result['details']['type'] != 'Utility':
+            return None
+
+        return UtilityConsumable(result['id'], result['name'])
+
+    def to_data (self):
+        return (self.api_id, self.name)
+
+    @staticmethod
+    def from_data (storage, data):
+        api_id, name = data
+        return UtilityConsumable(api_id, name)
+
+
 BUILTIN_TYPES = [
     o for o in vars().values()
     if inspect.isclass(o) and issubclass(o, Entity) and o is not Entity]
