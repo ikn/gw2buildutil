@@ -1,0 +1,4 @@
+/build/
+/dist/
+/gw2buildutil.egg-info
+__pycache__/
