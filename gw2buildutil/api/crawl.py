@@ -1,4 +1,9 @@
+import logging
+
 from . import client as gw2client, entity as gw2entity, storage as gw2storage
+
+logger = logging.getLogger(__name__)
+
 
 def _dependency_order (entity_types):
     remaining = set(entity_types)
@@ -25,7 +30,7 @@ class Crawler:
                        if not self.storage.exists_raw(path, api_id)]
         if not new_api_ids:
             return
-        print(f'get {len(new_api_ids)}/{len(api_ids)} /{"/".join(path)}')
+        logger.info(f'get {len(new_api_ids)}/{len(api_ids)} /{"/".join(path)}')
 
         for result in self.client.get(path, new_api_ids):
             self.storage.store_raw(path, result)
@@ -56,7 +61,7 @@ class Crawler:
 
         for group in ordered_grouped:
             path = group[0].path()
-            print(f'list /{"/".join(path)}')
+            logger.info(f'list /{"/".join(path)}')
             api_ids = self.client.list_(path)
             self._crawl(path, api_ids)
             self._process(path, api_ids, group)

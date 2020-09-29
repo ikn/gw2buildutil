@@ -1,5 +1,7 @@
 # 0.1-next
 
+- use a logger
+
 # 0.1
 
 Initial packages:
