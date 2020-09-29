@@ -4,11 +4,17 @@ from .. import build
 from . import util
 
 
-words_pattern = r'(\w[\w\'!\- ]*[\w!]|\w)'
+word_pattern = r'[\w"\'!\-]+'
+words_pattern = f'{word_pattern}' r'( ' f'{word_pattern}' r')*'
 
 
-_gear_groups_pattern = re.compile(r'^'
-    '[\w ]+( \+ [\w ]+)*'
+def sep_pattern (sep, item_pattern):
+    return (f'{item_pattern}'
+            r'(' f'{re.escape(sep)}{item_pattern}' r')*')
+
+
+_gear_groups_pattern = re.compile('^'
+    f'{sep_pattern(" + ", words_pattern)}'
     '$')
 
 def parse_gear_groups (text):
@@ -16,19 +22,16 @@ def parse_gear_groups (text):
         return []
     if _gear_groups_pattern.match(text) is None:
         raise util.ParseError('gear definition doesn\'t match expected '
-                              'format: {}'.format(repr(text)))
+                              f'format: {repr(text)}')
 
     return [
         build.GearGroups.from_id(group_text)
         for group_text in text.split(' + ')
     ]
 
-_words_seq_pattern = re.compile(r'^'
-    f'{words_pattern}'
-    r'(, ' f'{words_pattern}' r')*'
-    r'$')
+_words_pattern = re.compile(words_pattern)
 def parse_words_seq (text, defn_label, num=None):
-    if _words_seq_pattern.match(text) is None:
+    if _words_pattern.match(text) is None:
         raise util.ParseError(f'{defn_label} definition doesn\'t match '
                               f'expected format: {repr(text)}')
 

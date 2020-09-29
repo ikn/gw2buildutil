@@ -2,15 +2,17 @@ import io
 import re
 
 from .. import api, build
-from . import util, section
+from . import util, text as parse_text, section
 
 _SKIP_SECTION = object()
 
 
-title_pattern = re.compile(r'^'
-    '(?P<mode>.+) '
-    '(?P<prof>\w+) '
-    '\((?P<labels>[ \w]+(, [ \w]+)*)\)'
+title_pattern = re.compile('^'
+    f'(?P<mode>{parse_text.words_pattern}) '
+    f'(?P<prof>{parse_text.word_pattern}) '
+    '\\((?P<labels>'
+         f'{parse_text.sep_pattern(", ", parse_text.words_pattern)}'
+         ')\\)'
     '$')
 
 def parse_title (title, api_storage):

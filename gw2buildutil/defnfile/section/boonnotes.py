@@ -4,7 +4,7 @@ from ... import build
 from .. import util
 
 
-uptimes_pattern = re.compile(r'^'
+uptimes_pattern = re.compile('^'
     '(\d{1,3}% )?(5|10)-[a-z]+(, (\d{1,3}% )?(5|10)-[a-z]+)*'
     '$')
 

@@ -1,5 +1,6 @@
 # 0.1-next
 
+- `defnfile`: parsing improvements
 - use a logger
 
 # 0.1

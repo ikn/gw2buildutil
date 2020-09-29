@@ -5,6 +5,8 @@ from ... import build
 from ... import api
 from .. import util, text as parse_text
 
+wds_pat = parse_text.words_pattern
+
 
 url_pattern = re.compile(r'^http://gw2skills.net/editor/\?[A-Za-z0-9+-/]+$')
 
@@ -21,9 +23,9 @@ def parse_description (paragraphs):
         '\n\n'.join('\n'.join(lines) for lines in paragraphs))
 
 
-stats_pattern = re.compile(r'^'
-    r'[\w\']+( [\w +]+)?(, [\w\']+( [\w +]+)?)*'
-    r'$')
+stats_pattern = re.compile('^'
+    f'{parse_text.sep_pattern(", ", parse_text.sep_pattern(" + ", wds_pat))}'
+    '$')
 
 def parse_stats (line, meta, api_storage):
     if stats_pattern.match(line) is None:
@@ -56,10 +58,10 @@ def stats_lookup (names, stats):
     return stats[None]
 
 
-weapons_pattern = re.compile(r'^'
-    r'(?P<types1>\w+( \w+)?) \((?P<sigils1>[\w\' ]+, [\w\' ]+)\)'
-    r'( / (?P<types2>\w+( \w+)?) \((?P<sigils2>[\w\' ]+, [\w\' ]+)\))?'
-    r'$')
+weapons_pattern = re.compile('^'
+    f'(?P<types1>{wds_pat}) \\((?P<sigils1>{wds_pat}, {wds_pat})\\)'
+    f'( / (?P<types2>{wds_pat}) \\((?P<sigils2>{wds_pat}, {wds_pat})\\))?'
+    '$')
 
 def parse_weapons (line, stats, meta, api_storage):
     match = weapons_pattern.match(line)
@@ -91,11 +93,11 @@ def parse_weapons (line, stats, meta, api_storage):
          if fields['types2'] is not None else None))
 
 
-runes_pattern = re.compile(r'^('
-    r'(?P<single>[\w\' ]+)'
-    r'|'
-    r'(?P<multi>\d [\w\' ]+( \+ \d [\w\' ]+)+)'
-    r') runes$')
+runes_pattern = re.compile('^('
+    f'(?P<single>{wds_pat})'
+    '|'
+    f'(?P<multi>\\d {wds_pat}( \\+ \\d {wds_pat})+)'
+    ') runes$')
 
 def parse_runes (runes_line):
     match = runes_pattern.match(runes_line)
@@ -150,10 +152,10 @@ def parse_trinkets (stats):
     ])
 
 
-traits_pattern = re.compile(r'^'
-    f'{parse_text.words_pattern}' r'( [1-3]){3}'
-    r'(, ' f'{parse_text.words_pattern}' r'( [1-3]){3}){2}'
-    r'$')
+traits_pattern = re.compile('^'
+    f'{wds_pat}' '( [1-3]){3}'
+    f'(, {wds_pat}' '( [1-3]){3}){2}'
+    '$')
 
 def parse_traits (line, api_storage):
     if traits_pattern.match(line) is None:
