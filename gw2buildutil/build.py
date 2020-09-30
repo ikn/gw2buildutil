@@ -32,7 +32,7 @@ class GameModes (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _game_modes_id_lookup[id_.lower()]
+        return _game_modes_id_lookup[util.Identified.normalise_id(id_)]
 
 _game_modes_id_lookup = _enum_id_lookup(GameModes)
 
@@ -91,7 +91,7 @@ class WeaponTypes (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _weapon_types_id_lookup[id_.lower()]
+        return _weapon_types_id_lookup[util.Identified.normalise_id(id_)]
 
 _weapon_types_id_lookup = _enum_id_lookup(WeaponTypes)
 
@@ -109,7 +109,7 @@ class WeaponHands (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _weapon_hands_id_lookup[id_.lower()]
+        return _weapon_hands_id_lookup[util.Identified.normalise_id(id_)]
 
 _weapon_hands_id_lookup = _enum_id_lookup(WeaponHands)
 
@@ -161,7 +161,7 @@ class PvpSigils (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _pvp_sigils_id_lookup[id_.lower()]
+        return _pvp_sigils_id_lookup[util.Identified.normalise_id(id_)]
 
 _pvp_sigils_id_lookup = _enum_id_lookup(PvpSigils)
 
@@ -289,7 +289,7 @@ class PvpRunes (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _pvp_runes_id_lookup[id_.lower()]
+        return _pvp_runes_id_lookup[util.Identified.normalise_id(id_)]
 
 _pvp_runes_id_lookup = _enum_id_lookup(PvpRunes)
 
@@ -309,7 +309,7 @@ class ArmourTypes (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _armour_types_id_lookup[id_.lower()]
+        return _armour_types_id_lookup[util.Identified.normalise_id(id_)]
 
 _armour_types_id_lookup = _enum_id_lookup(ArmourTypes)
 
@@ -379,7 +379,7 @@ class GearGroups (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _gear_groups_id_lookup[id_.lower()]
+        return _gear_groups_id_lookup[util.Identified.normalise_id(id_)]
 
 _gear_groups_id_lookup = _enum_id_lookup(GearGroups)
 _gear_groups_id_lookup.update(_weapon_types_id_lookup)
@@ -481,7 +481,7 @@ class RevenantLegends (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _revenant_legends_id_lookup[id_.lower()]
+        return _revenant_legends_id_lookup[util.Identified.normalise_id(id_)]
 
 _revenant_legends_id_lookup = _enum_id_lookup(RevenantLegends)
 
@@ -537,7 +537,7 @@ class Boons (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _boons_id_lookup[id_.lower()]
+        return _boons_id_lookup[util.Identified.normalise_id(id_)]
 
 _boons_id_lookup = _enum_id_lookup(Boons)
 
@@ -555,7 +555,7 @@ class BoonTargets (enum.Enum):
 
     @staticmethod
     def from_id (id_):
-        return _boon_targets_id_lookup[id_.lower()]
+        return _boon_targets_id_lookup[util.Identified.normalise_id(id_)]
 
 _boon_targets_id_lookup = _enum_id_lookup(BoonTargets)
 

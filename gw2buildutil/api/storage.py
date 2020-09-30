@@ -3,6 +3,7 @@ import os
 import json
 import dbm
 
+from .. import util
 from . import entity as gw2entity
 
 
@@ -89,7 +90,8 @@ class FileStorage (Storage):
             del self._raw_db[key]
 
     def _id_key (self, entity_type, id_):
-        return f'{entity_type.type_id()}:id:{id_.lower()}'
+        return (f'{entity_type.type_id()}:'
+                f'id:{util.Identified.normalise_id(id_)}')
 
     def _api_id_key (self, entity_type, api_id):
         return f'{entity_type.type_id()}:api_id:{api_id}'
