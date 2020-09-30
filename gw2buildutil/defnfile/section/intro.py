@@ -38,7 +38,10 @@ def parse_stats (line, meta, api_storage):
     gear_stats = {}
     for section in line.split(', '):
         words = section.split()
-        stats = api_storage.from_id(stats_entity_type, words[0])
+        try:
+            stats = api_storage.from_id(stats_entity_type, words[0])
+        except KeyError:
+            raise util.ParseError(f'unknown stats: {words[0]}')
         gear_groups = parse_text.parse_gear_groups(section[len(words[0]) + 1:])
 
         if not gear_groups:
@@ -58,6 +61,13 @@ def stats_lookup (names, stats):
     return stats[None]
 
 
+def lookup_sigil (id_, api_storage):
+    try:
+        return api_storage.from_id(api.entity.Sigil, id_)
+    except KeyError:
+        raise util.ParseError(f'unknown sigil: {id_}')
+
+
 weapons_pattern = re.compile('^'
     f'(?P<types1>{wds_pat}) \\((?P<sigils1>{wds_pat}, {wds_pat})\\)'
     f'( / (?P<types2>{wds_pat}) \\((?P<sigils2>{wds_pat}, {wds_pat})\\))?'
@@ -71,7 +81,7 @@ def parse_weapons (line, stats, meta, api_storage):
     fields = match.groupdict()
     parse_sigil = (
         build.PvpSigils.from_id if meta.game_mode == build.GameModes.PVP
-        else lambda text: api_storage.from_id(api.entity.Sigil, text))
+        else lambda text: lookup_sigil(text, api_storage))
 
     def build_weapon (type_, hand, sigils):
         weapon_stats = stats_lookup((type_, build.GearGroups.WEAPONS), stats)
@@ -91,6 +101,13 @@ def parse_weapons (line, stats, meta, api_storage):
         build_weapon_set(fields['types1'], fields['sigils1']),
         (build_weapon_set(fields['types2'], fields['sigils2'])
          if fields['types2'] is not None else None))
+
+
+def lookup_rune (id_, api_storage):
+    try:
+        return api_storage.from_id(api.entity.Rune, id_)
+    except KeyError:
+        raise util.ParseError(f'unknown rune: {id_}')
 
 
 runes_pattern = re.compile('^('
@@ -122,7 +139,7 @@ def parse_armour (runes, stats, api_storage):
     return build.Armour([build.ArmourPiece(
         type_,
         stats_lookup((type_, build.GearGroups.ARMOUR), stats),
-        api_storage.from_id(api.entity.Rune, rune)
+        lookup_rune(rune, api_storage)
     ) for type_, rune in zip(build.ArmourTypes, runes.elements())])
 
 
@@ -167,18 +184,23 @@ def parse_traits (line, api_storage):
         id_, *choices_text = spec_text.rsplit(' ', 3)
         choices = [build.TraitChoices.from_index(int(choice_text) - 1)
                    for choice_text in choices_text]
-        specs.append(build.SpecialisationChoices(
-            api_storage.from_id(api.entity.Specialisation, id_),
-            choices))
+        try:
+            spec = api_storage.from_id(api.entity.Specialisation, id_)
+        except KeyError:
+            raise util.ParseError(f'unknown specialisation: {id_}')
+        specs.append(build.SpecialisationChoices(spec, choices))
 
     return build.Traits(specs)
 
 
-def lookup_consumable (text, api_storage):
+def lookup_consumable (id_, api_storage):
     try:
-        return api_storage.from_id(api.entity.Food, text)
+        return api_storage.from_id(api.entity.Food, id_)
     except KeyError:
-        return api_storage.from_id(api.entity.UtilityConsumable, text)
+        try:
+            return api_storage.from_id(api.entity.UtilityConsumable, id_)
+        except KeyError:
+            raise util.ParseError(f'unknown consumable: {id_}')
 
 
 def parse_consumables (line, api_storage):
@@ -206,10 +228,17 @@ num_prof_lines = collections.defaultdict(lambda: 0, {
 })
 
 
+def lookup_ranger_pet (id_, api_storage):
+    try:
+        return api_storage.from_id(api.entity.RangerPet, id_)
+    except KeyError:
+        raise util.ParseError(f'unknown ranger pet: {id_}')
+
+
 def parse_ranger_pets (line, api_storage):
     ids = parse_text.parse_words_seq(line, 'ranger pets')
     return build.RangerPets(
-        [api_storage.from_id(api.entity.RangerPet, id_) for id_ in ids])
+        [lookup_ranger_pet(id_, api_storage) for id_ in ids])
 
 
 def parse_prof_options (lines, meta, api_storage):
@@ -264,6 +293,13 @@ def parse_revenant_skills (lines):
                                  for legend_text in legends_text])
 
 
+def lookup_skill (id_, api_storage):
+    try:
+        return api_storage.from_id(api.entity.Skill, id_)
+    except KeyError:
+        raise util.ParseError(f'unknown skill: {id_}')
+
+
 def parse_skills (lines, meta, api_storage):
     if meta.profession.id_ == 'revenant':
         return parse_revenant_skills(lines)
@@ -278,9 +314,9 @@ def parse_skills (lines, meta, api_storage):
         parse_text.parse_words_seq(lines[1], 'utility skills', 3))
     elite_skill_id = parse_text.parse_words_seq(lines[2], 'elite skill', 1)[0]
     return build.Skills(
-        api_storage.from_id(api.entity.Skill, heal_skill_id),
-        [api_storage.from_id(api.entity.Skill, s) for s in utility_skill_ids],
-        api_storage.from_id(api.entity.Skill, elite_skill_id))
+        lookup_skill(heal_skill_id, api_storage),
+        [lookup_skill(s, api_storage) for s in utility_skill_ids],
+        lookup_skill(elite_skill_id, api_storage))
 
 
 def parse (lines, meta, api_storage):

@@ -1,6 +1,8 @@
 # 0.1-next
 
-- `defnfile`: parsing improvements
+- `defnfile`:
+    - parse some text more accurately
+    - map errors to `ParseError` in more cases
 - use a logger
 
 # 0.1

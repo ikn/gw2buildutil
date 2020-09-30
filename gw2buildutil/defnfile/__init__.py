@@ -30,11 +30,14 @@ def parse_title (title, api_storage):
     try:
         profession = api_storage.from_id(api.entity.Profession, fields['prof'])
     except KeyError:
-        elite_spec = api_storage.from_id(
-            api.entity.Specialisation, fields['prof'])
-        if not elite_spec.is_elite:
+        try:
+            elite_spec = api_storage.from_id(
+                api.entity.Specialisation, fields['prof'])
+        except KeyError:
+            elite_spec = None
+        if elite_spec is None or not elite_spec.is_elite:
             raise util.ParseError('title has a missing or incorrect profession '
-                                  'identifier: {}'.format(repr(title)))
+                                  f'identifier: {repr(title)}')
         else:
             profession = elite_spec.profession
     else:
