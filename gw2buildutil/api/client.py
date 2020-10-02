@@ -3,6 +3,7 @@ import urllib.parse
 import urllib.request
 
 BASE_URL = 'https://api.guildwars2.com/v2'
+SCHEMA_VERSION = '2020-10-01T00:00:00Z'
 MAX_QUERYSTRING_SIZE = 1024
 BATCH_SIZE = 100
 
@@ -19,6 +20,7 @@ class Client:
     def _get_json (self, url):
         req = urllib.request.Request(url, headers={
             'Accept': 'application/json',
+            'X-Schema-Version': SCHEMA_VERSION,
         })
         with urllib.request.urlopen(req) as res:
             body = res.read()

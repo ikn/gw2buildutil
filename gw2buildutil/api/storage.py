@@ -4,10 +4,18 @@ import json
 import dbm
 
 from .. import util
-from . import entity as gw2entity
+from . import client as gw2client, entity as gw2entity
 
 
 class Storage (abc.ABC):
+    @abc.abstractmethod
+    def store_schema_version (self, version):
+        pass
+
+    @abc.abstractmethod
+    def schema_version (self):
+        pass
+
     @abc.abstractmethod
     def store_raw (self, result):
         pass
@@ -46,6 +54,8 @@ class Storage (abc.ABC):
 
 
 class FileStorage (Storage):
+    _SCHEMA_VERSION_KEY = 'meta:version'
+
     def __init__ (self, path=None):
         if path is None:
             default_cache_path = os.path.join(os.path.expanduser('~'), '.cache')
@@ -72,6 +82,15 @@ class FileStorage (Storage):
 
     def __exit__ (self, *args):
         self.close()
+
+    def store_schema_version (self, version):
+        self._raw_db[self._SCHEMA_VERSION_KEY] = version
+
+    def schema_version (self):
+        if self._SCHEMA_VERSION_KEY in self._raw_db:
+            return self._raw_db[self._SCHEMA_VERSION_KEY].decode()
+        else:
+            return None
 
     def _raw_key (self, path, api_id):
         return f'entity:{"/".join(path)}:{api_id}'

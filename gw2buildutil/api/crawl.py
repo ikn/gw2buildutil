@@ -77,7 +77,9 @@ def crawl (client=gw2client.Client(),
         return
 
     crawler = Crawler(client, storage, entity_types)
-    if full_recrawl:
+    if storage.schema_version() != gw2client.SCHEMA_VERSION or full_recrawl:
+        print('clear')
         storage.clear_raw()
+        storage.store_schema_version(gw2client.SCHEMA_VERSION)
     storage.clear() # required if entity definition changes
     crawler.crawl_all(entity_types)

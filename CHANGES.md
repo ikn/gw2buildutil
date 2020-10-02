@@ -1,5 +1,10 @@
 # 0.1-next
 
+- `api`:
+    - schema version:
+        - send version in requests
+        - store version in storage
+        - clear storage when crawling with changed version
 - `defnfile`:
     - parse some text more accurately
     - map errors to `ParseError` in more cases
