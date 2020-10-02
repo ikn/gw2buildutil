@@ -282,15 +282,23 @@ def parse_setup (lines, meta, api_storage):
     }
 
 
-def parse_revenant_skills (lines):
+def lookup_revenant_legend (id_, api_storage):
+    try:
+        return api_storage.from_id(api.entity.RevenantLegend, id_)
+    except KeyError:
+        raise util.ParseError(f'unknown Revenant legend: {id_}')
+
+
+def parse_revenant_skills (lines, api_storage):
     if len(lines) != 1:
         raise util.ParseError(
             'third intro paragraph has the wrong number of lines: '
             f'got {len(lines)}, expected 1')
 
     legends_text = parse_text.parse_words_seq(lines[0], 'legends', 2)
-    return build.RevenantSkills([build.RevenantLegends.from_id(legend_text)
-                                 for legend_text in legends_text])
+    return build.RevenantSkills([
+        lookup_revenant_legend(legend_text, api_storage)
+        for legend_text in legends_text])
 
 
 def lookup_skill (id_, api_storage):
@@ -302,7 +310,7 @@ def lookup_skill (id_, api_storage):
 
 def parse_skills (lines, meta, api_storage):
     if meta.profession.id_ == 'revenant':
-        return parse_revenant_skills(lines)
+        return parse_revenant_skills(lines, api_storage)
 
     if len(lines) != 3:
         raise util.ParseError(

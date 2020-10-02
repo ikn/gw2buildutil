@@ -17,15 +17,15 @@ class Storage (abc.ABC):
         pass
 
     @abc.abstractmethod
-    def store_raw (self, result):
+    def store_raw (self, path, result):
         pass
 
     @abc.abstractmethod
-    def exists_raw (self, api_id):
+    def exists_raw (self, path, api_id):
         pass
 
     @abc.abstractmethod
-    def raw (self, api_id):
+    def raw (self, path, api_id):
         pass
 
     @abc.abstractmethod

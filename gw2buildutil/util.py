@@ -11,4 +11,4 @@ class Identified:
 
     @staticmethod
     def normalise_id (id_):
-        return id_.lower()
+        return str(id_).lower()

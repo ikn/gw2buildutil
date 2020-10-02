@@ -462,30 +462,6 @@ class Skills:
                              f'{len(self.utilities)}')
 
 
-class RevenantLegend (util.Identified):
-    def __init__ (self, name, extra_ids=()):
-        ids = (name,) + (
-            (extra_ids,) if isinstance(extra_ids, str) else tuple(extra_ids))
-        util.Identified.__init__(self, ids)
-        self.name = name
-
-
-class RevenantLegends (enum.Enum):
-    ASSASSIN = RevenantLegend('Assassin', ('shiro',))
-    CENTAUR = RevenantLegend('Centaur', ('ventari',))
-    DEMON = RevenantLegend('Demon', ('mallyx',))
-    DWARF = RevenantLegend('Dwarf', ('jalis',))
-
-    DRAGON = RevenantLegend('Dragon', ('glint', 'herald'))
-    RENEGADE = RevenantLegend('Renegade', ('kalla',))
-
-    @staticmethod
-    def from_id (id_):
-        return _revenant_legends_id_lookup[util.Identified.normalise_id(id_)]
-
-_revenant_legends_id_lookup = _enum_id_lookup(RevenantLegends)
-
-
 class RevenantSkills:
     def __init__ (self, legends):
         self.legends = tuple(legends)

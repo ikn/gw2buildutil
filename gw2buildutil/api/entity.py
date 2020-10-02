@@ -44,67 +44,12 @@ class Entity (abc.ABC, util.Identified):
         pass
 
 
-class Skill (Entity):
-    def __init__ (self, api_id, name):
-        full_id = name.lower().strip('"')
-        ids = []
-        id_ = full_id
-        if id_.endswith('!'):
-            id_ = id_[:-1]
-        if ':' in id_:
-            id_ = id_[id_.index(':') + 1:].strip()
-        if '.' in id_:
-            id_ = id_.replace('.', '') # eg. 'A.E.D.'
-        if id_.startswith('summon '):
-            id_ = id_[len('summon '):]
-        ids = [id_]
-        if full_id != id_:
-            ids.append(full_id)
-
-        aliases = []
-        if ' ' in id_:
-            abbr = ''.join(word[0] for word in id_.split(' ') if word)
-            aliases.append(abbr)
-            if full_id.endswith('!'):
-                aliases.append(abbr + '!')
-
-        Entity.__init__(self, api_id, ids, aliases)
-        self.name = name
-
-    @staticmethod
-    def path ():
-        return ('skills',)
-
-    @staticmethod
-    def from_api (crawler, storage, result):
-        # NOTE: other properties:
-        # professions[]
-        # *type [ Weapon Heal Utility Elite Profession ]
-        # *weapon_type [ None Axe ... ]
-        # *slot [ Downed_# Pet Profession_# Utility Weapon_# ]
-        # *categories[] [ DualWield StealthAttack ]
-        # *attunement [ Fire Water Air Earth ]
-        # *dual_wield [ Axe ... ] # off-hand
-        if not result.get('professions', ()):
-            return None
-        if 'prev_chain' in result:
-            return None
-
-        return Skill(result['id'], result['name'])
-
-    def to_data (self):
-        return (self.api_id, self.name)
-
-    @staticmethod
-    def from_data (storage, data):
-        api_id, name = data
-        return Skill(api_id, name)
-
-
 class Profession (Entity):
-    def __init__ (self, api_id, name):
-        Entity.__init__(self, api_id, name)
+    def __init__ (self, api_id, name, build_id, skills_build_ids):
+        Entity.__init__(self, api_id, (name, build_id))
         self.name = name
+        self.build_id = build_id
+        self.skills_build_ids = skills_build_ids
 
     @staticmethod
     def path ():
@@ -112,15 +57,19 @@ class Profession (Entity):
 
     @staticmethod
     def from_api (crawler, storage, result):
-        return Profession(result['id'], result['name'])
+        skills_build_ids = {
+            api_id: build_id
+            for build_id, api_id in result.get('skills_by_palette', [])}
+        return Profession(
+            result['id'], result['name'], result['code'], skills_build_ids)
 
     def to_data (self):
-        return (self.api_id, self.name)
+        return (self.api_id, self.name, self.build_id, self.skills_build_ids)
 
     @staticmethod
     def from_data (storage, data):
-        api_id, name = data
-        return Profession(api_id, name)
+        api_id, name, build_id, skills_build_ids = data
+        return Profession(api_id, name, build_id, skills_build_ids)
 
 
 class Specialisation (Entity):
@@ -154,6 +103,140 @@ class Specialisation (Entity):
         api_id, name, prof_api_id, is_elite = data
         prof = storage.from_api_id(Profession, prof_api_id)
         return Specialisation(api_id, name, prof, is_elite)
+
+
+class Skill (Entity):
+    def __init__ (self, api_id, name, build_id, storage_build_id):
+        full_id = name.lower().strip('"')
+        ids = []
+        id_ = full_id
+        if id_.endswith('!'):
+            id_ = id_[:-1]
+        if ':' in id_:
+            id_ = id_[id_.index(':') + 1:].strip()
+        if '.' in id_:
+            id_ = id_.replace('.', '') # eg. 'A.E.D.'
+        if id_.startswith('summon '):
+            id_ = id_[len('summon '):]
+
+        ids = [id_]
+        if full_id != id_:
+            ids.append(full_id)
+        if storage_build_id is not None:
+            ids.append(storage_build_id)
+
+        aliases = []
+        if ' ' in id_:
+            abbr = ''.join(word[0] for word in id_.split(' ') if word)
+            aliases.append(abbr)
+            if full_id.endswith('!'):
+                aliases.append(abbr + '!')
+
+        Entity.__init__(self, api_id, ids, aliases)
+        self.name = name
+        self.build_id = build_id
+        self._storage_build_id = storage_build_id
+
+    @staticmethod
+    def crawl_dependencies ():
+        return set([Profession])
+
+    @staticmethod
+    def path ():
+        return ('skills',)
+
+    @staticmethod
+    def _storage_build_id (profession, build_id):
+        return f'build:{profession.api_id}:{build_id}'
+
+    @staticmethod
+    def from_api (crawler, storage, result):
+        # NOTE: other properties:
+        # professions[]
+        # *type [ Weapon Heal Utility Elite Profession ]
+        # *weapon_type [ None Axe ... ]
+        # *slot [ Downed_# Pet Profession_# Utility Weapon_# ]
+        # *categories[] [ DualWield StealthAttack ]
+        # *attunement [ Fire Water Air Earth ]
+        # *dual_wield [ Axe ... ] # off-hand
+        if 'prev_chain' in result:
+            return None
+
+        api_id = result['id']
+        prof_api_ids = result.get('professions', ())
+        if len(prof_api_ids) != 1:
+            return None
+        prof = storage.from_api_id(Profession, prof_api_ids[0])
+        build_id = prof.skills_build_ids.get(str(api_id))
+        if build_id is None:
+            storage_build_id = None
+        else:
+            storage_build_id = Skill._storage_build_id(prof, build_id)
+
+        return Skill(api_id, result['name'], build_id, storage_build_id)
+
+    def to_data (self):
+        return (self.api_id, self.name, self.build_id, self._storage_build_id)
+
+    @staticmethod
+    def from_data (storage, data):
+        api_id, name, build_id, storage_build_id = data
+        return Skill(api_id, name, build_id, storage_build_id)
+
+    @staticmethod
+    def from_build_id (storage, profession, build_id):
+        storage_build_id = Skill._storage_build_id(profession, build_id)
+        return storage.from_id(Skill, storage_build_id)
+
+
+# not obtainable through the API in any sensible way
+_legend_ids = {
+    'assassin': ('shiro',),
+    'centaur': ('ventari',),
+    'demon': ('mallyx',),
+    'dwarf': ('jalis',),
+
+    'dragon': ('glint', 'herald'),
+    'renegade': ('kalla',),
+}
+
+class RevenantLegend (Entity):
+    def __init__ (self, api_id, name, build_id):
+        id_ = name.lower()
+        ids = [id_]
+        ids.extend(_legend_ids.get(id_, ()))
+        ids.append(build_id)
+
+        Entity.__init__(self, api_id, ids)
+        self.name = name
+        self.build_id = build_id
+
+    @staticmethod
+    def crawl_dependencies ():
+        return set([Skill])
+
+    @staticmethod
+    def path ():
+        return ('legends',)
+
+    @staticmethod
+    def from_api (crawler, storage, result):
+        swap_skill = storage.from_api_id(Skill, result['swap'])
+        name = swap_skill.name
+        if name.startswith('Legendary '):
+            name = name[len('Legendary '):]
+        if name.endswith(' Stance'):
+            name = name[:-len(' Stance')]
+
+        return RevenantLegend(result['id'], name, result['code'])
+
+    def to_data (self):
+        return (self.api_id, self.name, self.build_id)
+
+    @staticmethod
+    def from_data (storage, data):
+        api_id, name, build_id = data
+        return RevenantLegend(api_id, name, build_id)
 
 
 class RangerPet (Entity):
