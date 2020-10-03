@@ -30,17 +30,8 @@ class Entity (abc.ABC, util.Identified):
 
     @staticmethod
     @abc.abstractmethod
-    def from_api (crawler, storage, result):
+    def from_api (result, storage, crawler=None):
         # return instance, or None to skip
-        pass
-
-    @abc.abstractmethod
-    def to_data (self):
-        pass
-
-    @staticmethod
-    @abc.abstractmethod
-    def from_data (storage, data):
         pass
 
 
@@ -56,20 +47,12 @@ class Profession (Entity):
         return ('professions',)
 
     @staticmethod
-    def from_api (crawler, storage, result):
+    def from_api (result, storage, crawler=None):
         skills_build_ids = {
             api_id: build_id
             for build_id, api_id in result.get('skills_by_palette', [])}
         return Profession(
             result['id'], result['name'], result['code'], skills_build_ids)
-
-    def to_data (self):
-        return (self.api_id, self.name, self.build_id, self.skills_build_ids)
-
-    @staticmethod
-    def from_data (storage, data):
-        api_id, name, build_id, skills_build_ids = data
-        return Profession(api_id, name, build_id, skills_build_ids)
 
 
 class Specialisation (Entity):
@@ -88,21 +71,13 @@ class Specialisation (Entity):
         return ('specializations',)
 
     @staticmethod
-    def from_api (crawler, storage, result):
+    def from_api (result, storage, crawler=None):
         prof_api_id = result['profession']
-        crawler.crawl(Profession, (prof_api_id,))
+        if crawler is not None:
+            crawler.crawl(Profession, (prof_api_id,))
         prof = storage.from_api_id(Profession, prof_api_id)
         return Specialisation(
             result['id'], result['name'], prof, result['elite'])
-
-    def to_data (self):
-        return (self.api_id, self.name, self.profession.api_id, self.is_elite)
-
-    @staticmethod
-    def from_data (storage, data):
-        api_id, name, prof_api_id, is_elite = data
-        prof = storage.from_api_id(Profession, prof_api_id)
-        return Specialisation(api_id, name, prof, is_elite)
 
 
 class Skill (Entity):
@@ -135,7 +110,6 @@ class Skill (Entity):
         Entity.__init__(self, api_id, ids, aliases)
         self.name = name
         self.build_id = build_id
-        self._storage_build_id = storage_build_id
 
     @staticmethod
     def crawl_dependencies ():
@@ -150,7 +124,7 @@ class Skill (Entity):
         return f'build:{profession.api_id}:{build_id}'
 
     @staticmethod
-    def from_api (crawler, storage, result):
+    def from_api (result, storage, crawler=None):
         # NOTE: other properties:
         # professions[]
         # *type [ Weapon Heal Utility Elite Profession ]
@@ -166,8 +140,10 @@ class Skill (Entity):
         prof_api_ids = result.get('professions', ())
         if len(prof_api_ids) != 1:
             return None
+        if crawler is not None:
+            crawler.crawl(Profession, (prof_api_ids[0],))
         prof = storage.from_api_id(Profession, prof_api_ids[0])
-        build_id = prof.skills_build_ids.get(str(api_id))
+        build_id = prof.skills_build_ids.get(api_id)
         if build_id is None:
             storage_build_id = None
         else:
@@ -175,16 +151,8 @@ class Skill (Entity):
 
         return Skill(api_id, result['name'], build_id, storage_build_id)
 
-    def to_data (self):
-        return (self.api_id, self.name, self.build_id, self._storage_build_id)
-
     @staticmethod
-    def from_data (storage, data):
-        api_id, name, build_id, storage_build_id = data
-        return Skill(api_id, name, build_id, storage_build_id)
-
-    @staticmethod
-    def from_build_id (storage, profession, build_id):
+    def from_build_id (profession, build_id, storage):
         storage_build_id = Skill._storage_build_id(profession, build_id)
         return storage.from_id(Skill, storage_build_id)
 
@@ -220,7 +188,9 @@ class RevenantLegend (Entity):
         return ('legends',)
 
     @staticmethod
-    def from_api (crawler, storage, result):
+    def from_api (result, storage, crawler=None):
+        if crawler is not None:
+            crawler.crawl(Skill, (result['swap'],))
         swap_skill = storage.from_api_id(Skill, result['swap'])
         name = swap_skill.name
         if name.startswith('Legendary '):
@@ -229,14 +199,6 @@ class RevenantLegend (Entity):
             name = name[:-len(' Stance')]
 
         return RevenantLegend(result['id'], name, result['code'])
-
-    def to_data (self):
-        return (self.api_id, self.name, self.build_id)
-
-    @staticmethod
-    def from_data (storage, data):
-        api_id, name, build_id = data
-        return RevenantLegend(api_id, name, build_id)
 
 
 class RangerPet (Entity):
@@ -257,16 +219,8 @@ class RangerPet (Entity):
         return ('pets',)
 
     @staticmethod
-    def from_api (crawler, storage, result):
+    def from_api (result, storage, crawler=None):
         return RangerPet(result['id'], result['name'])
-
-    def to_data (self):
-        return (self.api_id, self.name)
-
-    @staticmethod
-    def from_data (storage, data):
-        api_id, name = data
-        return RangerPet(api_id, name)
 
 
 class Stats (Entity):
@@ -287,7 +241,7 @@ class Stats (Entity):
         return ('itemstats',)
 
     @staticmethod
-    def from_api (crawler, storage, result):
+    def from_api (result, storage, crawler=None):
         if len(result['attributes']) < 3:
             return None
         if not result['name']:
@@ -296,14 +250,6 @@ class Stats (Entity):
             return None
 
         return Stats(result['id'], result['name'])
-
-    def to_data (self):
-        return (self.api_id, self.name)
-
-    @staticmethod
-    def from_data (storage, data):
-        api_id, name = data
-        return Stats(api_id, name)
 
 
 class PvpStats (Entity):
@@ -320,16 +266,8 @@ class PvpStats (Entity):
         return ('pvp', 'amulets')
 
     @staticmethod
-    def from_api (crawler, storage, result):
+    def from_api (result, storage, crawler=None):
         return PvpStats(result['id'], result['name'])
-
-    def to_data (self):
-        return (self.api_id, self.name)
-
-    @staticmethod
-    def from_data (storage, data):
-        api_id, name = data
-        return PvpStats(api_id, name)
 
 
 sigil_pattern = re.compile(r'^'
@@ -356,7 +294,7 @@ class Sigil (Entity):
         return ('items',)
 
     @staticmethod
-    def from_api (crawler, storage, result):
+    def from_api (result, storage, crawler=None):
         if result['type'] != 'UpgradeComponent':
             return None
         if result['details']['type'] != 'Sigil':
@@ -365,14 +303,6 @@ class Sigil (Entity):
             return None
 
         return Sigil(result['id'], result['name'])
-
-    def to_data (self):
-        return (self.api_id, self.name)
-
-    @staticmethod
-    def from_data (storage, data):
-        api_id, name = data
-        return Sigil(api_id, name)
 
 
 rune_pattern = re.compile(r'^'
@@ -399,7 +329,7 @@ class Rune (Entity):
         return ('items',)
 
     @staticmethod
-    def from_api (crawler, storage, result):
+    def from_api (result, storage, crawler=None):
         if result['type'] != 'UpgradeComponent':
             return None
         if result['details']['type'] != 'Rune':
@@ -408,14 +338,6 @@ class Rune (Entity):
             return None
 
         return Rune(result['id'], result['name'])
-
-    def to_data (self):
-        return (self.api_id, self.name)
-
-    @staticmethod
-    def from_data (storage, data):
-        api_id, name = data
-        return Rune(api_id, name)
 
 
 food_prefixes = (
@@ -441,21 +363,13 @@ class Food (Entity):
         return ('items',)
 
     @staticmethod
-    def from_api (crawler, storage, result):
+    def from_api (result, storage, crawler=None):
         if result['type'] != 'Consumable':
             return None
         if result['details']['type'] != 'Food':
             return None
 
         return Food(result['id'], result['name'])
-
-    def to_data (self):
-        return (self.api_id, self.name)
-
-    @staticmethod
-    def from_data (storage, data):
-        api_id, name = data
-        return Food(api_id, name)
 
 
 class UtilityConsumable (Entity):
@@ -468,21 +382,13 @@ class UtilityConsumable (Entity):
         return ('items',)
 
     @staticmethod
-    def from_api (crawler, storage, result):
+    def from_api (result, storage, crawler=None):
         if result['type'] != 'Consumable':
             return None
         if result['details']['type'] != 'Utility':
             return None
 
         return UtilityConsumable(result['id'], result['name'])
-
-    def to_data (self):
-        return (self.api_id, self.name)
-
-    @staticmethod
-    def from_data (storage, data):
-        api_id, name = data
-        return UtilityConsumable(api_id, name)
 
 
 BUILTIN_TYPES = [

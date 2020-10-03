@@ -38,12 +38,10 @@ class Crawler:
     def _process (self, path, api_ids, entity_types):
         for api_id in api_ids:
             for entity_type in entity_types:
-                # if we store the same entity twice, it can conflict with itself
-                if not self.storage.exists(entity_type, api_id):
-                    result = self.storage.raw(path, api_id)
-                    entity = entity_type.from_api(self, self.storage, result)
-                    if entity is not None:
-                        self.storage.store(entity)
+                result = self.storage.raw(path, api_id)
+                entity = entity_type.from_api(result, self.storage, self)
+                if entity is not None:
+                    self.storage.store(entity)
 
     def crawl (self, entity_type, api_ids):
         path = entity_type.path()

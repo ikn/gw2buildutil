@@ -9,7 +9,9 @@
         - **breaking**: moved from an enum in `build`
         - add `build_id` attribute
     - `entity.Profession`: add `build_id` attribute
-    - `entity.Skill`: add `build_id` attribute, `from_build_id` static method
+    - `entity.Skill`: add `build_id` attribute, `from_build_id()` static method
+    - **breaking**: `entity.Entity`: change `from_api()` argument order
+    - **breaking**: remove `storage.Storage.exists()`
 - `defnfile`:
     - parse some text more accurately
     - map errors to `ParseError` in more cases
