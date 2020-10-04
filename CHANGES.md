@@ -19,6 +19,7 @@
     - added aquatic variants for skills, legends and pets
     - **breaking**: for ranger, `Intro.profession_options` is now
       `RangerOptions` instead of `RangerPets`
+- `buildtemplate`: new module
 - use a logger
 
 # 0.1 (2020-09-28)
