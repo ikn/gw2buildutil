@@ -38,7 +38,7 @@ _game_modes_id_lookup = _enum_id_lookup(GameModes)
 
 
 class BuildMetadata:
-    def __init__ (self, game_mode, profession, elite_spec, labels):
+    def __init__ (self, game_mode, profession, elite_spec, labels=()):
         self.game_mode = game_mode
         self.profession = profession
         self.elite_spec = elite_spec
@@ -478,15 +478,22 @@ class RangerPets:
             raise ValueError(f'expected 1 or 2 pets, got {len(self.pets)}')
 
 
+class RangerOptions:
+    def __init__ (self, pets, aquatic_pets=None):
+        self.pets = pets
+        self.aquatic_pets = aquatic_pets
+
+
 class Intro:
     def __init__ (self, url, description, gear, traits, skills,
-                  profession_options=None):
+                  profession_options=None, aquatic_skills=None):
         self.url = url
         self.description = description
         self.gear = gear
         self.traits = traits
         self.skills = skills
         self.profession_options = profession_options
+        self.aquatic_skills = aquatic_skills
 
 
 class Boon (util.Identified):

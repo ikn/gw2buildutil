@@ -15,6 +15,10 @@
 - `defnfile`:
     - parse some text more accurately
     - map errors to `ParseError` in more cases
+- `build`:
+    - added aquatic variants for skills, legends and pets
+    - **breaking**: for ranger, `Intro.profession_options` is now
+      `RangerOptions` instead of `RangerPets`
 - use a logger
 
 # 0.1 (2020-09-28)
