@@ -430,7 +430,7 @@ _trait_choices_index_lookup = {choice.value.index: choice
 class SpecialisationChoices:
     def __init__ (self, spec, choices):
         self.spec = spec
-        self.choices = tuple(choices)
+        self.choices = tuple(choices) # items can be None
 
         if len(self.choices) != 3:
             raise ValueError('expected 3 trait choices, got '
@@ -439,7 +439,7 @@ class SpecialisationChoices:
 
 class Traits:
     def __init__ (self, specs):
-        self.specs = tuple(specs)
+        self.specs = tuple(specs) # items can be None
 
         if len(self.specs) != 3:
             raise ValueError('expected 3 specialisations, got '
@@ -448,6 +448,7 @@ class Traits:
 
 class Skills:
     def __init__ (self, heal, utilities, elite):
+        # skills can be None
         self.heal = heal
         self.utilities = tuple(utilities)
         self.elite = elite
@@ -457,9 +458,9 @@ class Skills:
                              f'{len(self.utilities)}')
 
 
-class RevenantSkills:
+class RevenantSkills (Skills):
     def __init__ (self, legends):
-        self.legends = tuple(legends)
+        self.legends = tuple(legends) # items can be None
 
         if len(self.legends) != 2:
             raise ValueError(f'expected 2 legends, got {len(self.legends)}')
@@ -467,7 +468,7 @@ class RevenantSkills:
 
 class RangerPets:
     def __init__ (self, pets):
-        self.pets = tuple(pets)
+        self.pets = tuple(pets) # items can be None
 
         if len(self.pets) < 1 or len(self.pets) > 2:
             raise ValueError(f'expected 1 or 2 pets, got {len(self.pets)}')
@@ -489,8 +490,7 @@ class Intro:
         self.traits = traits
         self.skills = skills
         self.profession_options = profession_options
-        self.aquatic_skills = (Skills(None, (None, None, None), None)
-                               if aquatic_skills is None else aquatic_skills)
+        self.aquatic_skills = aquatic_skills
 
 
 class Boon (util.Identified):

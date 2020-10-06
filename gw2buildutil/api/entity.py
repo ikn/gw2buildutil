@@ -193,7 +193,7 @@ _legend_ids = {
 }
 
 class RevenantLegend (Entity):
-    def __init__ (self, api_id, name, build_id):
+    def __init__ (self, api_id, name, build_id, skills):
         id_ = name.lower()
         ids = [id_]
         ids.extend(_legend_ids.get(id_, ()))
@@ -202,6 +202,9 @@ class RevenantLegend (Entity):
         Entity.__init__(self, api_id, ids)
         self.name = name
         self.build_id = build_id
+        self.heal_skill = skills['heal']
+        self.utility_skills = tuple(skills['utilities'])
+        self.elite_skill = skills['elite']
 
     @staticmethod
     def crawl_dependencies ():
@@ -222,7 +225,19 @@ class RevenantLegend (Entity):
         if name.endswith(' Stance'):
             name = name[:-len(' Stance')]
 
-        return RevenantLegend(result['id'], name, result['code'])
+        def lookup_skill (api_id):
+            if crawler is not None:
+                crawler.crawl(Skill, (api_id,))
+            return storage.from_api_id(Skill, api_id)
+
+        skills = {
+            'heal': lookup_skill(result['heal']),
+            'utilities': [lookup_skill(api_id)
+                          for api_id in result['utilities']],
+            'elite': lookup_skill(result['elite']),
+        }
+
+        return RevenantLegend(result['id'], name, result['code'], skills)
 
 
 class RangerPet (Entity):

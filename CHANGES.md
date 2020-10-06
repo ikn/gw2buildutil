@@ -7,7 +7,8 @@
         - clear storage when crawling with changed version
     - add `entity.RevenantLegend`
         - **breaking**: moved from an enum in `build`
-        - add `build_id` attribute
+        - add attributes: `build_id`, `heal_skill`, `utility_skills`,
+          `elite_skill`
     - `entity.Profession`: add `build_id` attribute
     - `entity.Skill`: add `build_id` attribute, `from_build_id()` static method
     - **breaking**: `entity.Entity`: change `from_api()` argument order

@@ -235,15 +235,16 @@ def lookup_ranger_pet (id_, api_storage):
         raise util.ParseError(f'unknown ranger pet: {id_}')
 
 
-def parse_ranger_pets (line, api_storage):
+def parse_ranger_options (line, api_storage):
     ids = parse_text.parse_words_seq(line, 'ranger pets')
-    return build.RangerPets(
+    pets = build.RangerPets(
         [lookup_ranger_pet(id_, api_storage) for id_ in ids])
+    return build.RangerOptions(pets)
 
 
 def parse_prof_options (lines, meta, api_storage):
     if meta.profession.id_ == 'ranger':
-        return parse_ranger_pets(lines[0], api_storage)
+        return parse_ranger_options(lines[0], api_storage)
     else:
         return None
 

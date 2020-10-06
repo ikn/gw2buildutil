@@ -2,7 +2,7 @@ import logging
 import base64
 import struct
 
-from . import build, api
+from . import build as gw2build, api
 
 # specification: https://en-forum.guildwars2.com/discussion/94395/api-updates-december-18-2019
 
@@ -13,6 +13,11 @@ _READER_FORMATS = {
     2: '<H',
     4: '<I',
 }
+_SKILLS_SIZE = 2 * 5 * 2
+_LEGEND_SKILLS_SIZE = 2 * 3 * 2
+_LEGENDS_TOTAL_SIZE = 2 * 2 * 1 + _LEGEND_SKILLS_SIZE
+_PETS_SIZE = 2 * 2 * 1
+_SUFFIX_SIZE = max(_LEGENDS_TOTAL_SIZE, _PETS_SIZE)
 
 
 class ParseError (ValueError):
@@ -60,13 +65,13 @@ def _parse_spec (reader, api_storage):
         (traits_data & 0b110000) >> 4,
     ]
     choices = [
-        None if n == 0 else build.TraitChoices.from_index(n - 1)
+        None if n == 0 else gw2build.TraitChoices.from_index(n - 1)
         for n in choices_indices]
-    return build.SpecialisationChoices(spec, choices)
+    return gw2build.SpecialisationChoices(spec, choices)
 
 
 def _parse_traits (reader, api_storage):
-    return build.Traits([_parse_spec(reader, api_storage) for i in range(3)])
+    return gw2build.Traits([_parse_spec(reader, api_storage) for i in range(3)])
 
 
 def _parse_skill (reader, profession, api_storage):
@@ -79,9 +84,9 @@ def _parse_skill (reader, profession, api_storage):
 
 def _parse_skills (reader, profession, api_storage):
     skills = [_parse_skill(reader, profession, api_storage) for i in range(10)]
-    terrestrial_skills = build.Skills(
+    terrestrial_skills = gw2build.Skills(
         skills[0], [skills[2], skills[4], skills[6]], skills[8])
-    aquatic_skills = build.Skills(
+    aquatic_skills = gw2build.Skills(
         skills[1], [skills[3], skills[5], skills[7]], skills[9])
     return (terrestrial_skills, aquatic_skills)
 
@@ -95,11 +100,10 @@ def _parse_revenant_legend (reader, api_storage):
 
 
 def _parse_revenant_skills (reader, api_storage):
-    reader.skip(2 * 5 * 2) # normal skills
     legends = [_parse_revenant_legend(reader, api_storage) for i in range(4)]
-    reader.skip(2 * 3 * 2) # legend skill order
-    return (build.RevenantSkills(legends[:2]),
-            build.RevenantSkills(legends[2:]))
+    reader.skip(_LEGEND_SKILLS_SIZE)
+    return (gw2build.RevenantSkills(legends[:2]),
+            gw2build.RevenantSkills(legends[2:]))
 
 
 def _parse_ranger_pet (reader, api_storage):
@@ -112,7 +116,7 @@ def _parse_ranger_pet (reader, api_storage):
 
 def _parse_ranger_pets (reader, api_storage):
     pets = [_parse_ranger_pet(reader, api_storage) for i in range(4)]
-    return (build.RangerPets(pets[:2]), build.RangerPets(pets[2:]))
+    return (gw2build.RangerPets(pets[:2]), gw2build.RangerPets(pets[2:]))
 
 
 def parse (code, api_storage):
@@ -125,12 +129,15 @@ def parse (code, api_storage):
     prof = _parse_profession(reader, api_storage)
     traits = _parse_traits(reader, api_storage)
     if prof.id_ == 'revenant':
-        skills, aquatic_skills = _parse_revenant_skills(reader, api_storage)
+        reader.skip(_SKILLS_SIZE)
     else:
         skills, aquatic_skills = _parse_skills(reader, prof, api_storage)
+
+    if prof.id_ == 'revenant':
+        skills, aquatic_skills = _parse_revenant_skills(reader, api_storage)
     if prof.id_ == 'ranger':
         pets, aquatic_pets = _parse_ranger_pets(reader, api_storage)
-        prof_opts = build.RangerOptions(pets, aquatic_pets)
+        prof_opts = gw2build.RangerOptions(pets, aquatic_pets)
     else:
         prof_opts = None
 
@@ -138,7 +145,115 @@ def parse (code, api_storage):
     for spec in traits.specs:
         if spec is not None and spec.spec.is_elite:
             elite_spec = spec
-    meta = build.BuildMetadata(None, prof, elite_spec)
-    intro = build.Intro(None, None, None,
+    meta = gw2build.BuildMetadata(None, prof, elite_spec)
+    intro = gw2build.Intro(None, None, None,
                         traits, skills, prof_opts, aquatic_skills)
-    return build.Build(meta, intro)
+    return gw2build.Build(meta, intro)
+
+
+def _render_profession (build):
+    return [build.metadata.profession.build_id]
+
+
+def _render_spec (spec_choices):
+    if spec_choices is None:
+        return [0, 0]
+
+    choices_data = [0 if choice is None else (choice.value.index + 1)
+                    for choice in spec_choices.choices]
+    return [
+        spec_choices.spec.api_id,
+        choices_data[0] | (choices_data[1] << 2) | (choices_data[2] << 4),
+    ]
+
+
+def _render_traits (build):
+    data = []
+    # elite spec must come last
+    specs = sorted(build.intro.traits.specs,
+                   key=lambda spec_choices: spec_choices.spec.is_elite)
+    for spec_choices in specs:
+        data.extend(_render_spec(spec_choices))
+    return data
+
+
+def _render_skill (skill):
+    return struct.pack(_READER_FORMATS[2],
+                       0 if skill is None else skill.build_id)
+
+
+def _render_skills (build):
+    aquatic_skills = (gw2build.Skills(None, (None, None, None), None)
+                      if build.intro.aquatic_skills is None
+                      else build.intro.aquatic_skills)
+
+    skills = [
+        build.intro.skills.heal,
+        aquatic_skills.heal,
+        build.intro.skills.utilities[0],
+        aquatic_skills.utilities[0],
+        build.intro.skills.utilities[1],
+        aquatic_skills.utilities[1],
+        build.intro.skills.utilities[2],
+        aquatic_skills.utilities[2],
+        build.intro.skills.elite,
+        aquatic_skills.elite,
+    ]
+
+    data = []
+    for skill in skills:
+        data.extend(_render_skill(skill))
+    return data
+
+
+def _render_revenant_legends (build):
+    data = []
+
+    for skills in (build.intro.skills, build.intro.aquatic_skills):
+        if skills is None:
+            data.extend([0] * 2 * 1)
+        else:
+            for legend in skills.legends:
+                data.append(0 if legend is None else legend.build_id)
+
+    # legend skill order not currently stored in the build
+    data.extend([0] * _LEGEND_SKILLS_SIZE)
+
+    return data
+
+
+def _render_ranger_pets (build):
+    data = []
+    for pets in (
+        build.intro.profession_options.pets,
+        build.intro.profession_options.aquatic_pets,
+    ):
+        if pets is None:
+            data.extend([0] * 2)
+        else:
+            for pet in pets.pets:
+                data.append(0 if pet is None else pet.api_id)
+    return data
+
+
+def render (build):
+    data = []
+    data.append(0xd)
+    data.extend(_render_profession(build))
+    data.extend(_render_traits(build))
+    if build.metadata.profession.id_ == 'revenant':
+        data.extend([0] * _SKILLS_SIZE)
+    else:
+        data.extend(_render_skills(build))
+
+    if build.metadata.profession.id_ == 'revenant':
+        data.extend(_render_revenant_legends(build))
+        data.extend([0] * (_SUFFIX_SIZE - _LEGENDS_TOTAL_SIZE))
+    elif build.metadata.profession.id_ == 'ranger':
+        data.extend(_render_ranger_pets(build))
+        data.extend([0] * (_SUFFIX_SIZE - _PETS_SIZE))
+    else:
+        data.extend([0] * _SUFFIX_SIZE)
+
+    code = base64.b64encode(bytes(data)).decode('ascii')
+    return f'[&{code}]'
