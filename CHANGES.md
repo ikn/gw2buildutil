@@ -12,6 +12,10 @@
     - `entity.Skill`: add `build_id` attribute, `from_build_id()` static method
     - **breaking**: `entity.Entity`: change `from_api()` argument order
     - **breaking**: remove `storage.Storage.exists()`
+    - add optional `filters` argument to `Storage.from_id()`, and improve
+      default lookup behaviour
+    - **breaking**: remove `non_unique_ids` argument from `Entity()`; remove
+      `aliases` attribute from `Entity`
 - `defnfile`:
     - parse some text more accurately
     - map errors to `ParseError` in more cases

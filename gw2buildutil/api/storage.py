@@ -37,12 +37,24 @@ class Storage (abc.ABC):
         pass
 
     @abc.abstractmethod
-    def from_id (self, entity_type, id_):
+    def from_api_id (self, entity_type, api_id):
         pass
 
     @abc.abstractmethod
-    def from_api_id (self, entity_type, api_id):
+    def all_from_id (self, entity_type, id_):
         pass
+
+    def from_id (self, entity_type, id_, filters=()):
+        entities = self.all_from_id(entity_type, id_)
+        filters = list(filters)
+        filters.extend(entity_type.filters())
+        for filter_ in filters:
+            entities = filter_(entities)
+            if len(entities) == 1:
+                return entities[0]
+            if len(entities) == 0:
+                break
+        raise KeyError((entity_type, id_))
 
     @abc.abstractmethod
     def clear (self):
@@ -51,7 +63,6 @@ class Storage (abc.ABC):
 
 class FileStorage (Storage):
     _SCHEMA_VERSION_KEY = 'meta:version'
-    _CONFLICT_VALUE = ''
 
     def __init__ (self, path=None):
         if path is None:
@@ -111,34 +122,23 @@ class FileStorage (Storage):
 
     def store (self, entity):
         entity_type = type(entity)
-        data = str(entity.api_id)
 
         for id_ in entity.ids:
             id_key = self._id_key(entity_type, id_)
-            # use latest if conflict
-            self._db[id_key] = data
-
-        for id_ in entity.aliases:
-            alias_key = self._id_key(entity_type, id_)
-            # don't store if conflict
-            if alias_key in self._db:
-                if (self._db[alias_key].decode() not in
-                    (self._CONFLICT_VALUE, data)
-                ):
-                    self._db[alias_key] = self._CONFLICT_VALUE
+            if id_key in self._db:
+                data = json.loads(self._db[id_key])
             else:
-                self._db[alias_key] = data
+                data = []
+            data.append(entity.api_id)
+            self._db[id_key] = json.dumps(tuple(set(data)))
 
     def from_api_id (self, entity_type, api_id):
         return entity_type.from_api(self.raw(entity_type.path(), api_id), self)
 
-    def from_id (self, entity_type, id_):
+    def all_from_id (self, entity_type, id_):
         key = self._id_key(entity_type, id_)
-        api_id = self._db[key].decode()
-        if api_id == self._CONFLICT_VALUE:
-            # multiple entities used the same key
-            raise KeyError((entity_type, id_))
-        return self.from_api_id(entity_type, api_id)
+        api_ids = json.loads(self._db[key])
+        return [self.from_api_id(entity_type, api_id) for api_id in api_ids]
 
     def clear (self):
         for key in self._db.keys():

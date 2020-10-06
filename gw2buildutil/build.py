@@ -408,11 +408,6 @@ class PvpGear:
         self.armour = armour
 
 
-class Specialisation:
-    def __init__ (self, name):
-        self.name = name
-
-
 class TraitChoice:
     def __init__ (self, index, name):
         self.index = index
@@ -481,7 +476,8 @@ class RangerPets:
 class RangerOptions:
     def __init__ (self, pets, aquatic_pets=None):
         self.pets = pets
-        self.aquatic_pets = aquatic_pets
+        self.aquatic_pets = (RangerPets((None, None))
+                             if aquatic_pets is None else aquatic_pets)
 
 
 class Intro:
@@ -493,7 +489,8 @@ class Intro:
         self.traits = traits
         self.skills = skills
         self.profession_options = profession_options
-        self.aquatic_skills = aquatic_skills
+        self.aquatic_skills = (Skills(None, (None, None, None), None)
+                               if aquatic_skills is None else aquatic_skills)
 
 
 class Boon (util.Identified):

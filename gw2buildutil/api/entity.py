@@ -6,8 +6,8 @@ from .. import build, util
 
 
 class Entity (abc.ABC, util.Identified):
-    def __init__ (self, api_id, ids, non_unique_ids=()):
-        util.Identified.__init__ (self, ids, non_unique_ids)
+    def __init__ (self, api_id, ids):
+        util.Identified.__init__ (self, ids)
         self.api_id = api_id
 
     def __eq__ (self, other):
@@ -33,6 +33,20 @@ class Entity (abc.ABC, util.Identified):
     def from_api (result, storage, crawler=None):
         # return instance, or None to skip
         pass
+
+    @staticmethod
+    def _filter_use_first (entities):
+        # filter to entity with earliest API ID (for determinism), for each
+        # unique name
+        by_name = {}
+        for e in entities:
+            by_name.setdefault(e.name, []).append(e)
+        return [sorted(group, key=lambda e: e.api_id)[0]
+                for group in by_name.values()]
+
+    @staticmethod
+    def filters ():
+        return [Entity._filter_use_first]
 
 
 class Profession (Entity):
@@ -80,8 +94,12 @@ class Specialisation (Entity):
             result['id'], result['name'], prof, result['elite'])
 
 
+_skill_name_mappings = {
+    'Mirage Mirror': 'Jaunt',
+}
+
 class Skill (Entity):
-    def __init__ (self, api_id, name, build_id, storage_build_id):
+    def __init__ (self, api_id, name, build_id, storage_build_id, is_chained):
         full_id = name.lower().strip('"')
         ids = []
         id_ = full_id
@@ -99,17 +117,16 @@ class Skill (Entity):
             ids.append(full_id)
         if storage_build_id is not None:
             ids.append(storage_build_id)
-
-        aliases = []
         if ' ' in id_:
             abbr = ''.join(word[0] for word in id_.split(' ') if word)
-            aliases.append(abbr)
+            ids.append(abbr)
             if full_id.endswith('!'):
-                aliases.append(abbr + '!')
+                ids.append(abbr + '!')
 
-        Entity.__init__(self, api_id, ids, aliases)
+        Entity.__init__(self, api_id, ids)
         self.name = name
         self.build_id = build_id
+        self.is_chained = is_chained
 
     @staticmethod
     def crawl_dependencies ():
@@ -125,36 +142,43 @@ class Skill (Entity):
 
     @staticmethod
     def from_api (result, storage, crawler=None):
-        # NOTE: other properties:
-        # professions[]
-        # *type [ Weapon Heal Utility Elite Profession ]
-        # *weapon_type [ None Axe ... ]
-        # *slot [ Downed_# Pet Profession_# Utility Weapon_# ]
-        # *categories[] [ DualWield StealthAttack ]
-        # *attunement [ Fire Water Air Earth ]
-        # *dual_wield [ Axe ... ] # off-hand
-        if 'prev_chain' in result:
-            return None
-
         api_id = result['id']
-        prof_api_ids = result.get('professions', ())
-        if len(prof_api_ids) != 1:
-            return None
-        if crawler is not None:
-            crawler.crawl(Profession, (prof_api_ids[0],))
-        prof = storage.from_api_id(Profession, prof_api_ids[0])
-        build_id = prof.skills_build_ids.get(api_id)
-        if build_id is None:
-            storage_build_id = None
-        else:
-            storage_build_id = Skill._storage_build_id(prof, build_id)
+        name = result['name']
+        name = _skill_name_mappings.get(name, name)
+        build_id = None
+        storage_build_id = None
 
-        return Skill(api_id, result['name'], build_id, storage_build_id)
+        prof_api_ids = result.get('professions', ())
+        if len(prof_api_ids) == 1:
+            if crawler is not None:
+                crawler.crawl(Profession, (prof_api_ids[0],))
+            prof = storage.from_api_id(Profession, prof_api_ids[0])
+            build_id = prof.skills_build_ids.get(api_id)
+            if build_id is not None:
+                storage_build_id = Skill._storage_build_id(prof, build_id)
+
+        return Skill(api_id, name, build_id, storage_build_id,
+                     is_chained='prev_chain' in result)
 
     @staticmethod
     def from_build_id (profession, build_id, storage):
         storage_build_id = Skill._storage_build_id(profession, build_id)
         return storage.from_id(Skill, storage_build_id)
+
+    @staticmethod
+    def _filter_not_chained (skills):
+        return [s for s in skills if not s.is_chained]
+
+    @staticmethod
+    def _filter_has_build_id (skills):
+        return [s for s in skills if s.build_id is not None]
+
+    @staticmethod
+    def filters ():
+        return [
+            Skill._filter_not_chained,
+            Skill._filter_has_build_id,
+        ] + Entity.filters()
 
 
 # not obtainable through the API in any sensible way
@@ -224,17 +248,16 @@ class RangerPet (Entity):
 
 
 class Stats (Entity):
-    def __init__ (self, api_id, name):
+    def __init__ (self, api_id, name, num_attributes):
         full_id = name
-        id_ = full_id
-        if id_.endswith('\'s'):
-            id_ = id_[:-len('\'s')]
+        id_ = full_id.replace('\'s', '')
         ids = [id_]
         if full_id != id_:
             ids.append(full_id)
 
         Entity.__init__(self, api_id, ids)
         self.name = name
+        self.num_attributes = num_attributes
 
     @staticmethod
     def path ():
@@ -242,14 +265,26 @@ class Stats (Entity):
 
     @staticmethod
     def from_api (result, storage, crawler=None):
-        if len(result['attributes']) < 3:
-            return None
         if not result['name']:
             return None
-        if result['name'].find(' and ') >= 0:
-            return None
 
-        return Stats(result['id'], result['name'])
+        return Stats(result['id'], result['name'],
+                     num_attributes=len(result['attributes']))
+
+    @staticmethod
+    def _filter_endgame (stat_sets):
+        return [stats for stats in stat_sets if stats.num_attributes >= 3]
+
+    @staticmethod
+    def _filter_not_mixed (stat_sets):
+        return [stats for stats in stat_sets if stats.name.find(' and ') < 0]
+
+    @staticmethod
+    def filters ():
+        return [
+            Stats._filter_endgame,
+            Stats._filter_not_mixed,
+        ] + Entity.filters()
 
 
 class PvpStats (Entity):
@@ -348,14 +383,14 @@ food_prefixes = (
 class Food (Entity):
     def __init__ (self, api_id, name):
         full_id = name.lower()
-        aliases = []
+        ids = [full_id]
         for prefix in food_prefixes:
             full_prefix = f'{prefix} of '
             if full_id.startswith(full_prefix):
-                aliases.append(full_id[len(full_prefix):])
+                ids.append(full_id[len(full_prefix):])
                 break
 
-        Entity.__init__(self, api_id, full_id, aliases)
+        Entity.__init__(self, api_id, ids)
         self.name = name
 
     @staticmethod
