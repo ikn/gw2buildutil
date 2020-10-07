@@ -48,7 +48,10 @@ class _Reader:
 
 
 def _parse_profession (reader, api_storage):
-    return api_storage.from_id(api.entity.Profession, reader.read())
+    try:
+        return api_storage.from_id(api.entity.Profession, reader.read())
+    except KeyError:
+        raise ParseError('invalid profession ID')
 
 
 def _parse_spec (reader, api_storage):
@@ -56,7 +59,10 @@ def _parse_spec (reader, api_storage):
     if spec_api_id == 0:
         reader.skip()
         return None
-    spec = api_storage.from_api_id(api.entity.Specialisation, spec_api_id)
+    try:
+        spec = api_storage.from_api_id(api.entity.Specialisation, spec_api_id)
+    except KeyError:
+        raise ParseError('invalid specialisation ID')
 
     traits_data = reader.read()
     choices_indices = [
@@ -96,7 +102,10 @@ def _parse_revenant_legend (reader, api_storage):
     if build_id == 0:
         return None
     else:
-        return api_storage.from_id(api.entity.RevenantLegend, build_id)
+        try:
+            return api_storage.from_id(api.entity.RevenantLegend, build_id)
+        except KeyError:
+            raise ParseError('invalid legend ID')
 
 
 def _parse_revenant_skills (reader, api_storage):
@@ -111,7 +120,10 @@ def _parse_ranger_pet (reader, api_storage):
     if api_id == 0:
         return None
     else:
-        return api_storage.from_api_id(api.entity.RangerPet, api_id)
+        try:
+            return api_storage.from_api_id(api.entity.RangerPet, api_id)
+        except KeyError:
+            raise ParseError('invalid pet ID')
 
 
 def _parse_ranger_pets (reader, api_storage):
