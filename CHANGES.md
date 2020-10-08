@@ -1,4 +1,6 @@
-# 0.2
+# 0.2-next
+
+# 0.2 (2020-10-08)
 
 - `buildtemplate`: new module
 - `api`:
