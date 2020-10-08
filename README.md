@@ -1,4 +1,4 @@
-gw2buildutil 0.1-next.
+gw2buildutil 0.2.
 
 Python 3 library for working with [Guild Wars 2](https://www.guildwars2.com/en/)
 builds.
