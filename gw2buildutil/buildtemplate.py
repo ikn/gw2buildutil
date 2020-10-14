@@ -20,6 +20,14 @@ _PETS_SIZE = 2 * 2 * 1
 _SUFFIX_SIZE = max(_LEGENDS_TOTAL_SIZE, _PETS_SIZE)
 
 
+# some build IDs map to unexpected skills - this is a list of overrides
+_SKILL_FIXES = (
+    {'build id': 5958, 'api id': 45449}, # Jaunt / Mirage Mirror
+)
+_SKILL_API_IDS = {fix['build id']: fix['api id'] for fix in _SKILL_FIXES}
+_SKILL_BUILD_IDS = {fix['api id']: fix['build id'] for fix in _SKILL_FIXES}
+
+
 class ParseError (ValueError):
     pass
 
@@ -84,6 +92,9 @@ def _parse_skill (reader, profession, api_storage):
     build_id = reader.read(2)
     if build_id == 0:
         return None
+    elif build_id in _SKILL_API_IDS:
+        return api_storage.from_api_id(api.entity.Skill,
+                                       _SKILL_API_IDS[build_id])
     else:
         return api.entity.Skill.from_build_id(profession, build_id, api_storage)
 
@@ -154,9 +165,9 @@ def parse (code, api_storage):
         prof_opts = None
 
     elite_spec = None
-    for spec in traits.specs:
-        if spec is not None and spec.spec.is_elite:
-            elite_spec = spec
+    for spec_choices in traits.specs:
+        if spec_choices is not None and spec_choices.spec.is_elite:
+            elite_spec = spec_choices.spec
     meta = gw2build.BuildMetadata(None, prof, elite_spec)
     intro = gw2build.Intro(None, None, None,
                         traits, skills, prof_opts, aquatic_skills)
@@ -190,8 +201,18 @@ def _render_traits (build):
 
 
 def _render_skill (skill):
-    return struct.pack(_READER_FORMATS[2],
-                       0 if skill is None else skill.build_id)
+    if skill is not None:
+        if skill.build_id is not None:
+            build_id = skill.build_id
+        elif skill.api_id in _SKILL_BUILD_IDS:
+            build_id = _SKILL_BUILD_IDS[skill.api_id]
+        else:
+            print(skill.api_id)
+            raise ValueError('build cannot be rendered to a template code: '
+                             f'skill has no build ID: {skill.name}')
+    else:
+        build_id = 0
+    return struct.pack(_READER_FORMATS[2], build_id)
 
 
 def _render_skills (build):

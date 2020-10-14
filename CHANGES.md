@@ -1,5 +1,18 @@
 # 0.2-next
 
+- `build`:
+    - perform a lot more validation when constructing instances
+    - add `SkillType` and `SkillTypes`
+    - throw `BuildError` instead of `ValueError`
+    - **breaking**: remove aquatic weapon types until they're properly supported
+- `api`:
+    - `entity.Profession`: add `can_wield` method
+    - `entity.Skill`: add `type_`, `professions`, `weapon_type` and `is_aquatic`
+      attributes
+- `buildtemplate`:
+    - fix bug: parsing would set `BuildMetadata.elite_spec` to a
+      `SpecialisationChoices` instance instead of a `Specialisation` instance
+
 # 0.2 (2020-10-08)
 
 - `buildtemplate`: new module

@@ -50,11 +50,12 @@ class Entity (abc.ABC, util.Identified):
 
 
 class Profession (Entity):
-    def __init__ (self, api_id, name, build_id, skills_build_ids):
+    def __init__ (self, api_id, name, build_id, skills_build_ids, weapons):
         Entity.__init__(self, api_id, (name, build_id))
         self.name = name
         self.build_id = build_id
         self.skills_build_ids = skills_build_ids
+        self._weapons = weapons
 
     @staticmethod
     def path ():
@@ -65,8 +66,43 @@ class Profession (Entity):
         skills_build_ids = {
             api_id: build_id
             for build_id, api_id in result.get('skills_by_palette', [])}
+
+        weapons = {}
+        for type_id, weapon_result in result['weapons'].items():
+            try:
+                weapon_type = build.WeaponTypes.from_id(type_id)
+            except KeyError:
+                continue
+            weapon_elite_spec_api_id = weapon_result.get('specialization')
+            hands = set()
+            for flag in weapon_result['flags']:
+                try:
+                    hands.add(build.WeaponHands.from_id(flag))
+                except KeyError:
+                    continue
+            weapons[weapon_type] = {
+                'elite spec api id': weapon_elite_spec_api_id,
+                'hands': hands,
+            }
         return Profession(
-            result['id'], result['name'], result['code'], skills_build_ids)
+            result['id'], result['name'], result['code'], skills_build_ids,
+            weapons)
+
+    def can_wield (self, weapon, elite_spec=None):
+        wield_info = self._weapons.get(weapon.type_)
+        if wield_info is None:
+            return False
+
+        if wield_info['elite spec api id'] is not None:
+            if elite_spec is None:
+                return False
+            if wield_info['elite spec api id'] != elite_spec.api_id:
+                return False
+
+        if weapon.hand not in wield_info['hands']:
+            return False
+
+        return True
 
 
 class Specialisation (Entity):
@@ -94,12 +130,9 @@ class Specialisation (Entity):
             result['id'], result['name'], prof, result['elite'])
 
 
-_skill_name_mappings = {
-    'Mirage Mirror': 'Jaunt',
-}
-
 class Skill (Entity):
-    def __init__ (self, api_id, name, build_id, storage_build_id, is_chained):
+    def __init__ (self, api_id, name, type_, professions, weapon_type,
+                  build_id, storage_build_id, is_chained, is_aquatic):
         full_id = name.lower().strip('"')
         ids = []
         id_ = full_id
@@ -125,8 +158,12 @@ class Skill (Entity):
 
         Entity.__init__(self, api_id, ids)
         self.name = name
+        self.type_ = type_
+        self.professions = professions
+        self.weapon_type = weapon_type
         self.build_id = build_id
         self.is_chained = is_chained
+        self.is_aquatic = is_aquatic
 
     @staticmethod
     def crawl_dependencies ():
@@ -143,22 +180,44 @@ class Skill (Entity):
     @staticmethod
     def from_api (result, storage, crawler=None):
         api_id = result['id']
-        name = result['name']
-        name = _skill_name_mappings.get(name, name)
-        build_id = None
-        storage_build_id = None
+
+        if 'type' not in result:
+            return None
+        try:
+            type_ = build.SkillTypes.from_id(result['type'])
+        except KeyError:
+            return None
 
         prof_api_ids = result.get('professions', ())
-        if len(prof_api_ids) == 1:
+        profs = []
+        for prof_api_id in prof_api_ids:
             if crawler is not None:
-                crawler.crawl(Profession, (prof_api_ids[0],))
-            prof = storage.from_api_id(Profession, prof_api_ids[0])
-            build_id = prof.skills_build_ids.get(api_id)
-            if build_id is not None:
-                storage_build_id = Skill._storage_build_id(prof, build_id)
+                crawler.crawl(Profession, (prof_api_id,))
+            profs.append(storage.from_api_id(Profession, prof_api_id))
 
-        return Skill(api_id, name, build_id, storage_build_id,
-                     is_chained='prev_chain' in result)
+        if type_ == build.SkillTypes.WEAPON:
+            try:
+                weapon_type = build.WeaponTypes.from_id(result['weapon_type'])
+            except KeyError:
+                # probably a downed skill
+                type_ = None
+                weapon_type = None
+        else:
+            weapon_type = None
+
+        build_id = None
+        storage_build_id = None
+        if len(profs) == 1:
+            build_id = profs[0].skills_build_ids.get(api_id)
+            if build_id is not None:
+                storage_build_id = Skill._storage_build_id(profs[0], build_id)
+
+        flags = result.get('flags', ())
+
+        return Skill(api_id, result['name'], type_, profs, weapon_type,
+                     build_id, storage_build_id,
+                     is_chained='prev_chain' in result,
+                     is_aquatic='NoUnderwater' not in flags)
 
     @staticmethod
     def from_build_id (profession, build_id, storage):

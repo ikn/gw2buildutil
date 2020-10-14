@@ -3,6 +3,10 @@ import enum
 from . import util
 
 
+class BuildError (ValueError):
+    pass
+
+
 def _enum_id_lookup (enum_cls):
     lookup = {}
     for item in enum_cls:
@@ -85,9 +89,10 @@ class WeaponTypes (enum.Enum):
     TORCH = WeaponType('torch', 1)
     WARHORN = WeaponType('warhorn', 1)
 
-    HARPOON = WeaponType(('harpoon', 'speargun'), 2)
-    SPEAR = WeaponType('spear', 2)
-    TRIDENT = WeaponType('trident', 2)
+    # disallowed until aquatic weapons are properly supported
+    #HARPOON = WeaponType(('harpoon', 'speargun'), 2)
+    #SPEAR = WeaponType('spear', 2)
+    #TRIDENT = WeaponType('trident', 2)
 
     @staticmethod
     def from_id (id_):
@@ -103,9 +108,9 @@ class WeaponHand (util.Identified):
 
 
 class WeaponHands (enum.Enum):
-    BOTH = WeaponHand('both', 2)
-    MAIN = WeaponHand('main', 1)
-    OFF = WeaponHand('off', 1)
+    BOTH = WeaponHand(('both', 'twohand'), 2)
+    MAIN = WeaponHand(('main', 'mainhand'), 1)
+    OFF = WeaponHand(('off', 'offhand'), 1)
 
     @staticmethod
     def from_id (id_):
@@ -174,7 +179,7 @@ class Weapon:
         self.sigils = tuple(sigils)
 
         if len(self.sigils) != self.hand.value.hands:
-            raise ValueError('wrong number of sigils for '
+            raise BuildError('wrong number of sigils for '
                              '{}: {}'.format(self.hand, len(self.sigils)))
 
 
@@ -183,14 +188,28 @@ class Weapons:
         self.set1 = tuple(set1)
         self.set2 = None if set2 is None else tuple(set2)
 
-        if sum(w.hand.value.hands for w in self.set1) != 2:
-            raise ValueError('wrong number of weapons in set 1: '
-                            '{}'.format(self.set1))
-        if (self.set2 is not None and
-            sum(w.hand.value.hands for w in self.set2) != 2
-        ):
-            raise ValueError('wrong number of weapons in set 2: '
-                            '{}'.format(self.set1))
+        for set_ in (self.set1, self.set2):
+            if set_ is None:
+                continue
+            hands = {weapon.hand for weapon in set_}
+            if hands not in (
+                {WeaponHands.BOTH},
+                {WeaponHands.MAIN, WeaponHands.OFF}
+            ):
+                raise BuildError(
+                    'invalid weapon set: '
+                    f'{", ".join(weapon.type_.name for weapon in set_)}')
+
+    def check_profession (self, profession, elite_spec):
+        for set_ in (self.set1, self.set2):
+            if set_ is None:
+                continue
+            for weapon in set_:
+                if not profession.can_wield(weapon, elite_spec):
+                    spec = profession if elite_spec is None else elite_spec
+                    raise BuildError(
+                        f'{spec.name} cannot wield '
+                        f'{weapon.type_.name} in {weapon.hand.name}')
 
 
 class Rune:
@@ -326,10 +345,10 @@ class Armour:
         self.pieces = {p.type_: p for p in pieces}
 
         if len(pieces) != 6:
-            raise ValueError('expected 6 armour pieces, got '
+            raise BuildError('expected 6 armour pieces, got '
                              '{}'.format(len(pieces)))
         if len(self.pieces) != 6:
-            raise ValueError('not all armour types are present: '
+            raise BuildError('not all armour types are present: '
                              '{}'.format(list(self.pieces.keys())))
 
 
@@ -358,10 +377,10 @@ class Trinkets:
         self.pieces = {p.type_: p for p in pieces}
 
         if len(pieces) != 6:
-            raise ValueError('expected 6 trinkets, got '
+            raise BuildError('expected 6 trinkets, got '
                              '{}'.format(len(pieces)))
         if len(self.pieces) != 6:
-            raise ValueError('not all trinket types are present: '
+            raise BuildError('not all trinket types are present: '
                              '{}'.format(list(self.pieces.keys())))
 
 
@@ -400,12 +419,18 @@ class Gear:
         self.trinkets = trinkets
         self.consumables = consumables
 
+    def check_profession (self, profession, elite_spec):
+        self.weapons.check_profession(profession, elite_spec)
+
 
 class PvpGear:
     def __init__ (self, stats, weapons, armour):
         self.stats = stats
         self.weapons = weapons
         self.armour = armour
+
+    def check_profession (self, profession, elite_spec):
+        self.weapons.check_profession(profession, elite_spec)
 
 
 class TraitChoice:
@@ -433,7 +458,7 @@ class SpecialisationChoices:
         self.choices = tuple(choices) # items can be None
 
         if len(self.choices) != 3:
-            raise ValueError('expected 3 trait choices, got '
+            raise BuildError('expected 3 trait choices, got '
                              f'{len(self.choices)}')
 
 
@@ -442,8 +467,66 @@ class Traits:
         self.specs = tuple(specs) # items can be None
 
         if len(self.specs) != 3:
-            raise ValueError('expected 3 specialisations, got '
+            raise BuildError('expected 3 specialisations, got '
                              f'{len(self.specs)}')
+
+        spec_api_ids = set()
+        for spec_choices in self.specs:
+            if spec_choices is None:
+                continue
+            spec = spec_choices.spec
+            if spec_choices.spec.api_id in spec_api_ids:
+                raise BuildError('duplicate specialisation: '
+                                 f'{spec_choices.spec.name}')
+            spec_api_ids.add(spec_choices.spec.api_id)
+
+        elite_specs = [spec_choices.spec for spec_choices in self.specs
+                       if spec_choices.spec.is_elite]
+        if len(elite_specs) > 1:
+            raise BuildError('multiple elite specialisations are selected: '
+                             f'{", ".join(spec.name for spec in elite_specs)}')
+
+    def check_profession (self, profession, elite_spec):
+        actual_elite_spec = None
+        for spec_choices in self.specs:
+            if spec_choices is None:
+                continue
+            if spec_choices.spec.profession != profession:
+                raise BuildError(f'not a specialisation for {profession.name}: '
+                                 f'{spec_choices.spec.name}')
+            if spec_choices.spec.is_elite:
+                actual_elite_spec = spec_choices.spec
+
+        if elite_spec is None and actual_elite_spec is not None:
+            raise BuildError(
+                'no elite specialisation is declared in build metadata, '
+                f'but {actual_elite_spec.name} is selected in traits')
+        if elite_spec is not None and actual_elite_spec != elite_spec:
+            raise BuildError(
+                f'elite specialisation {elite_spec.name} is declared in '
+                f'build metadata, but not selected in traits')
+
+
+class SkillType (util.Identified):
+    def __init__ (self, ids):
+        util.Identified.__init__(self, ids)
+
+
+class SkillTypes (enum.Enum):
+    WEAPON = SkillType('weapon')
+    HEAL = SkillType('heal')
+    UTILITY = SkillType('utility')
+    ELITE = SkillType('elite')
+    PROFESSION = SkillType('profession')
+    BUNDLE = SkillType('bundle')
+    TOOLBELT = SkillType('toolbelt')
+    PET = SkillType('pet')
+
+    @staticmethod
+    def from_id (id_):
+        return _skill_types_id_lookup[util.Identified.normalise_id(id_)]
+
+_skill_types_id_lookup = _enum_id_lookup(SkillTypes)
 
 
 class Skills:
@@ -453,9 +536,36 @@ class Skills:
         self.utilities = tuple(utilities)
         self.elite = elite
 
+        if self.heal is not None and self.heal.type_ != SkillTypes.HEAL:
+            raise BuildError(f'not a heal skill: {self.heal.name}')
+
         if len(self.utilities) != 3:
-            raise ValueError('expected 3 utility skills, got '
+            raise BuildError('expected 3 utility skills, got '
                              f'{len(self.utilities)}')
+        utility_api_ids = set()
+        for utility in self.utilities:
+            if utility is not None:
+                if utility.type_ != SkillTypes.UTILITY:
+                    raise BuildError(f'not a utility skill: {utility.name}')
+                if utility.api_id in utility_api_ids:
+                    raise BuildError(f'duplicate utility skill: {utility.name}')
+                utility_api_ids.add(utility.api_id)
+        if self.elite is not None and self.elite.type_ != SkillTypes.ELITE:
+            raise BuildError(f'not an elite skill: {self.elite.name}')
+
+    def check_profession (self, profession):
+        for skill in (self.heal,) + self.utilities + (self.elite,):
+            if skill is not None and (
+                len(skill.professions) != 1 or
+                skill.professions[0] != profession
+            ):
+                raise BuildError(f'not a skill for {profession.name}: '
+                                 f'{skill.name}')
+
+    def check_aquatic (self):
+        for skill in (self.heal,) + self.utilities + (self.elite,):
+            if skill is not None and not skill.is_aquatic:
+                raise BuildError(f'skill not usable underwater: {skill.name}')
 
 
 class RevenantSkills (Skills):
@@ -463,7 +573,16 @@ class RevenantSkills (Skills):
         self.legends = tuple(legends) # items can be None
 
         if len(self.legends) != 2:
-            raise ValueError(f'expected 2 legends, got {len(self.legends)}')
+            raise BuildError(f'expected 2 legends, got {len(self.legends)}')
+
+    def check_profession (self, profession):
+        if profession.id_ != 'revenant':
+            raise BuildError(f'{profession.name} cannot use Revenant legends')
+
+    def check_aquatic (self):
+        for legend in self.legends:
+            if legend is not None and not legend.heal_skill.is_aquatic:
+                raise BuildError(f'legend not usable underwater: {legend.name}')
 
 
 class RangerPets:
@@ -471,7 +590,7 @@ class RangerPets:
         self.pets = tuple(pets) # items can be None
 
         if len(self.pets) < 1 or len(self.pets) > 2:
-            raise ValueError(f'expected 1 or 2 pets, got {len(self.pets)}')
+            raise BuildError(f'expected 1 or 2 pets, got {len(self.pets)}')
 
 
 class RangerOptions:
@@ -484,13 +603,24 @@ class RangerOptions:
 class Intro:
     def __init__ (self, url, description, gear, traits, skills,
                   profession_options=None, aquatic_skills=None):
-        self.url = url
-        self.description = description
-        self.gear = gear
+        self.url = url # can be None
+        self.description = description # can be None
+        self.gear = gear # can be None
         self.traits = traits
         self.skills = skills
-        self.profession_options = profession_options
         self.aquatic_skills = aquatic_skills
+        self.profession_options = profession_options
+
+        if self.aquatic_skills is not None:
+            self.aquatic_skills.check_aquatic()
+
+    def check_profession (self, profession, elite_spec):
+        if self.gear is not None:
+            self.gear.check_profession(profession, elite_spec)
+        self.traits.check_profession(profession, elite_spec)
+        self.skills.check_profession(profession)
+        if self.aquatic_skills is not None:
+            self.aquatic_skills.check_profession(profession)
 
 
 class Boon (util.Identified):
@@ -567,3 +697,6 @@ class Build:
         self.notes = notes
         self.boon_notes = boon_notes
         self.encounters = encounters
+
+        self.intro.check_profession(self.metadata.profession,
+                                    self.metadata.elite_spec)
