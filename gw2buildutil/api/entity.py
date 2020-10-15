@@ -11,7 +11,13 @@ def _load_dep (entity_type, api_id, storage, crawler):
     return storage.from_api_id(entity_type, api_id)
 
 
+class SkipEntityError (ValueError):
+    pass
+
+
 class Entity (abc.ABC, util.Identified):
+    # subclass constructors take arguments (result, storage, crawler)
+    # raise SkipEntityError to skip
     def __init__ (self, api_id, ids):
         util.Identified.__init__ (self, ids)
         self.api_id = api_id
@@ -26,18 +32,12 @@ class Entity (abc.ABC, util.Identified):
 
     @staticmethod
     def crawl_dependencies ():
-        # just a performance hint - should crawl dependencies in from_api
+        # just a performance hint - should crawl dependencies in constructor
         return set()
 
     @staticmethod
     @abc.abstractmethod
     def path ():
-        pass
-
-    @staticmethod
-    @abc.abstractmethod
-    def from_api (result, storage, crawler=None):
-        # return instance, or None to skip
         pass
 
     @staticmethod
@@ -56,24 +56,16 @@ class Entity (abc.ABC, util.Identified):
 
 
 class Profession (Entity):
-    def __init__ (self, api_id, name, build_id, skills_build_ids, weapons):
-        Entity.__init__(self, api_id, (name, build_id))
-        self.name = name
-        self.build_id = build_id
-        self.skills_build_ids = skills_build_ids
-        self._weapons = weapons
+    def __init__ (self, result, storage, crawler):
+        self.name = result['name']
+        self.build_id = result['code']
+        Entity.__init__(self, result['id'], (self.name, self.build_id))
 
-    @staticmethod
-    def path ():
-        return ('professions',)
-
-    @staticmethod
-    def from_api (result, storage, crawler=None):
-        skills_build_ids = {
+        self.skills_build_ids = {
             api_id: build_id
             for build_id, api_id in result.get('skills_by_palette', [])}
 
-        weapons = {}
+        self._weapons = {}
         for type_id, weapon_result in result['weapons'].items():
             try:
                 weapon_type = build.WeaponTypes.from_id(type_id)
@@ -86,13 +78,15 @@ class Profession (Entity):
                     hands.add(build.WeaponHands.from_id(flag))
                 except KeyError:
                     continue
-            weapons[weapon_type] = {
+            self._weapons[weapon_type] = {
                 'elite spec api id': weapon_elite_spec_api_id,
                 'hands': hands,
             }
-        return Profession(
-            result['id'], result['name'], result['code'], skills_build_ids,
-            weapons)
+
+    @staticmethod
+    def path ():
+        return ('professions',)
+
 
     def can_wield (self, weapon, elite_spec=None):
         wield_info = self._weapons.get(weapon.type_)
@@ -112,11 +106,12 @@ class Profession (Entity):
 
 
 class Specialisation (Entity):
-    def __init__ (self, api_id, name, profession, is_elite):
-        Entity.__init__(self, api_id, name)
-        self.name = name
-        self.profession = profession
-        self.is_elite = is_elite
+    def __init__ (self, result, storage, crawler):
+        self.name = result['name']
+        Entity.__init__(self, result['id'], self.name)
+        self.profession = _load_dep(
+            Profession, result['profession'], storage, crawler)
+        self.is_elite = result['elite']
 
     @staticmethod
     def crawl_dependencies ():
@@ -126,18 +121,13 @@ class Specialisation (Entity):
     def path ():
         return ('specializations',)
 
-    @staticmethod
-    def from_api (result, storage, crawler=None):
-        prof = _load_dep(Profession, result['profession'], storage, crawler)
-        return Specialisation(
-            result['id'], result['name'], prof, result['elite'])
-
 
 class Skill (Entity):
-    def __init__ (self, api_id, name, type_, professions, weapon_type,
-                  build_id, storage_build_id, is_chained, is_aquatic):
-        full_id = name.lower().strip('"')
-        ids = []
+    def __init__ (self, result, storage, crawler):
+        api_id = result['id']
+        self.name = result['name']
+
+        full_id = self.name.lower().strip('"')
         id_ = full_id
         if id_.endswith('!'):
             id_ = id_[:-1]
@@ -147,6 +137,38 @@ class Skill (Entity):
             id_ = id_.replace('.', '') # eg. 'A.E.D.'
         if id_.startswith('summon '):
             id_ = id_[len('summon '):]
+
+        if 'type' not in result:
+            raise SkipEntityError()
+        try:
+            self.type_ = build.SkillTypes.from_id(result['type'])
+        except KeyError:
+            raise SkipEntityError()
+
+        prof_api_ids = result.get('professions', ())
+        self.professions = []
+        for prof_api_id in prof_api_ids:
+            self.professions.append(
+                _load_dep(Profession, prof_api_id, storage, crawler))
+
+        if self.type_ == build.SkillTypes.WEAPON:
+            try:
+                self.weapon_type = (
+                    build.WeaponTypes.from_id(result['weapon_type']))
+            except KeyError:
+                # probably a downed skill
+                self.type_ = None
+                self.weapon_type = None
+        else:
+            self.weapon_type = None
+
+        self.build_id = None
+        storage_build_id = None
+        if len(self.professions) == 1:
+            self.build_id = self.professions[0].skills_build_ids.get(api_id)
+            if self.build_id is not None:
+                storage_build_id = Skill._storage_build_id(
+                    self.professions[0], self.build_id)
 
         ids = [id_]
         if full_id != id_:
@@ -160,13 +182,11 @@ class Skill (Entity):
                 ids.append(abbr + '!')
 
         Entity.__init__(self, api_id, ids)
-        self.name = name
-        self.type_ = type_
-        self.professions = professions
-        self.weapon_type = weapon_type
-        self.build_id = build_id
-        self.is_chained = is_chained
-        self.is_aquatic = is_aquatic
+
+        self.is_chained = 'prev_chain' in result
+
+        flags = result.get('flags', ())
+        self.is_aquatic = 'NoUnderwater' not in flags
 
     @staticmethod
     def crawl_dependencies ():
@@ -179,46 +199,6 @@ class Skill (Entity):
     @staticmethod
     def _storage_build_id (profession, build_id):
         return f'build:{profession.api_id}:{build_id}'
-
-    @staticmethod
-    def from_api (result, storage, crawler=None):
-        api_id = result['id']
-
-        if 'type' not in result:
-            return None
-        try:
-            type_ = build.SkillTypes.from_id(result['type'])
-        except KeyError:
-            return None
-
-        prof_api_ids = result.get('professions', ())
-        profs = []
-        for prof_api_id in prof_api_ids:
-            profs.append(_load_dep(Profession, prof_api_id, storage, crawler))
-
-        if type_ == build.SkillTypes.WEAPON:
-            try:
-                weapon_type = build.WeaponTypes.from_id(result['weapon_type'])
-            except KeyError:
-                # probably a downed skill
-                type_ = None
-                weapon_type = None
-        else:
-            weapon_type = None
-
-        build_id = None
-        storage_build_id = None
-        if len(profs) == 1:
-            build_id = profs[0].skills_build_ids.get(api_id)
-            if build_id is not None:
-                storage_build_id = Skill._storage_build_id(profs[0], build_id)
-
-        flags = result.get('flags', ())
-
-        return Skill(api_id, result['name'], type_, profs, weapon_type,
-                     build_id, storage_build_id,
-                     is_chained='prev_chain' in result,
-                     is_aquatic='NoUnderwater' not in flags)
 
     @staticmethod
     def from_build_id (profession, build_id, storage):
@@ -253,18 +233,28 @@ _legend_ids = {
 }
 
 class RevenantLegend (Entity):
-    def __init__ (self, api_id, name, build_id, skills):
-        id_ = name.lower()
+    def __init__ (self, result, storage, crawler):
+        swap_skill = _load_dep(Skill, result['swap'], storage, crawler)
+        self.name = swap_skill.name
+        if self.name.startswith('Legendary '):
+            self.name = self.name[len('Legendary '):]
+        if self.name.endswith(' Stance'):
+            self.name = self.name[:-len(' Stance')]
+
+        self.build_id = result['code']
+
+        id_ = self.name.lower()
         ids = [id_]
         ids.extend(_legend_ids.get(id_, ()))
-        ids.append(build_id)
+        ids.append(self.build_id)
 
+        api_id = result['id']
         Entity.__init__(self, api_id, ids)
-        self.name = name
-        self.build_id = build_id
-        self.heal_skill = skills['heal']
-        self.utility_skills = tuple(skills['utilities'])
-        self.elite_skill = skills['elite']
+
+        self.heal_skill = _load_dep(Skill, result['heal'], storage, crawler)
+        self.utility_skills = tuple(_load_dep(Skill, api_id, storage, crawler)
+                                    for api_id in result['utilities'])
+        self.elite_skill = _load_dep(Skill, result['elite'], storage, crawler)
 
     @staticmethod
     def crawl_dependencies ():
@@ -274,28 +264,12 @@ class RevenantLegend (Entity):
     def path ():
         return ('legends',)
 
-    @staticmethod
-    def from_api (result, storage, crawler=None):
-        swap_skill = _load_dep(Skill, result['swap'], storage, crawler)
-        name = swap_skill.name
-        if name.startswith('Legendary '):
-            name = name[len('Legendary '):]
-        if name.endswith(' Stance'):
-            name = name[:-len(' Stance')]
-
-        skills = {
-            'heal': _load_dep(Skill, result['heal'], storage, crawler),
-            'utilities': [_load_dep(Skill, api_id, storage, crawler)
-                          for api_id in result['utilities']],
-            'elite': _load_dep(Skill, result['elite'], storage, crawler),
-        }
-
-        return RevenantLegend(result['id'], name, result['code'], skills)
-
 
 class RangerPet (Entity):
-    def __init__ (self, api_id, name):
-        full_id = name.lower()
+    def __init__ (self, result, storage, crawler):
+        self.name = result['name']
+
+        full_id = self.name.lower()
         id_ = full_id
         if id_.startswith('juvenile '):
             id_ = id_[len('juvenile '):]
@@ -303,41 +277,30 @@ class RangerPet (Entity):
         if full_id != id_:
             ids.append(full_id)
 
-        Entity.__init__(self, api_id, ids)
-        self.name = name
+        Entity.__init__(self, result['id'], ids)
 
     @staticmethod
     def path ():
         return ('pets',)
 
-    @staticmethod
-    def from_api (result, storage, crawler=None):
-        return RangerPet(result['id'], result['name'])
-
 
 class Stats (Entity):
-    def __init__ (self, api_id, name, num_attributes):
-        full_id = name
+    def __init__ (self, result, storage, crawler):
+        self.name = result['name']
+
+        full_id = self.name
         id_ = full_id.replace('\'s', '')
         ids = [id_]
         if full_id != id_:
             ids.append(full_id)
 
-        Entity.__init__(self, api_id, ids)
-        self.name = name
-        self.num_attributes = num_attributes
+        Entity.__init__(self, result['id'], ids)
+
+        self.num_attributes = len(result['attributes'])
 
     @staticmethod
     def path ():
         return ('itemstats',)
-
-    @staticmethod
-    def from_api (result, storage, crawler=None):
-        if not result['name']:
-            return None
-
-        return Stats(result['id'], result['name'],
-                     num_attributes=len(result['attributes']))
 
     @staticmethod
     def _filter_endgame (stat_sets):
@@ -356,21 +319,18 @@ class Stats (Entity):
 
 
 class PvpStats (Entity):
-    def __init__ (self, api_id, name):
-        id_ = name.lower()
+    def __init__ (self, result, storage, crawler):
+        self.name = result['name']
+
+        id_ = self.name.lower()
         if id_.endswith(' amulet'):
             id_ = id_[:-len(' amulet')]
 
-        Entity.__init__(self, api_id, id_)
-        self.name = name
+        Entity.__init__(self, result['id'], id_)
 
     @staticmethod
     def path ():
         return ('pvp', 'amulets')
-
-    @staticmethod
-    def from_api (result, storage, crawler=None):
-        return PvpStats(result['id'], result['name'])
 
 
 sigil_pattern = re.compile(r'^'
@@ -378,34 +338,29 @@ sigil_pattern = re.compile(r'^'
     r'$')
 
 class Sigil (Entity):
-    def __init__ (self, api_id, name):
-        match = sigil_pattern.match(name)
+    def __init__ (self, result, storage, crawler):
+        if result['type'] != 'UpgradeComponent':
+            raise SkipEntityError()
+        if result['details']['type'] != 'Sigil':
+            raise SkipEntityError()
+        if result['name'] == 'Legendary Sigil':
+            raise SkipEntityError()
+
+        self.name = result['name']
+        match = sigil_pattern.match(self.name)
         if match is None:
-            raise ValueError(f'unexpected sigil name format: {name}')
+            raise SkipEntityError()
         fields = match.groupdict()
-        tier = build.UpgradeTiers(fields['tier'].lower())
-        ids = [f'{tier.value} {fields["name"]}']
-        if tier == build.UpgradeTiers.SUPERIOR:
+        self.tier = build.UpgradeTiers(fields['tier'].lower())
+        ids = [f'{self.tier.value} {fields["name"]}']
+        if self.tier == build.UpgradeTiers.SUPERIOR:
             ids.append(fields['name'])
 
-        Entity.__init__(self, api_id, ids)
-        self.name = name
-        self.tier = tier
+        Entity.__init__(self, result['id'], ids)
 
     @staticmethod
     def path ():
         return ('items',)
-
-    @staticmethod
-    def from_api (result, storage, crawler=None):
-        if result['type'] != 'UpgradeComponent':
-            return None
-        if result['details']['type'] != 'Sigil':
-            return None
-        if result['name'] == 'Legendary Sigil':
-            return None
-
-        return Sigil(result['id'], result['name'])
 
 
 rune_pattern = re.compile(r'^'
@@ -413,34 +368,29 @@ rune_pattern = re.compile(r'^'
     r'$')
 
 class Rune (Entity):
-    def __init__ (self, api_id, name):
-        match = rune_pattern.match(name)
+    def __init__ (self, result, storage, crawler):
+        if result['type'] != 'UpgradeComponent':
+            raise SkipEntityError()
+        if result['details']['type'] != 'Rune':
+            raise SkipEntityError()
+        if result['name'] in ('', 'Legendary Rune'):
+            raise SkipEntityError()
+
+        self.name = result['name']
+        match = rune_pattern.match(self.name)
         if match is None:
-            raise ValueError(f'unexpected rune name format: {name}')
+            raise SkipEntityError()
         fields = match.groupdict()
-        tier = build.UpgradeTiers(fields['tier'].lower())
-        ids = [f'{tier.value} {fields["name"]}']
-        if tier == build.UpgradeTiers.SUPERIOR:
+        self.tier = build.UpgradeTiers(fields['tier'].lower())
+        ids = [f'{self.tier.value} {fields["name"]}']
+        if self.tier == build.UpgradeTiers.SUPERIOR:
             ids.append(fields['name'])
 
-        Entity.__init__(self, api_id, ids)
-        self.name = name
-        self.tier = tier
+        Entity.__init__(self, result['id'], ids)
 
     @staticmethod
     def path ():
         return ('items',)
-
-    @staticmethod
-    def from_api (result, storage, crawler=None):
-        if result['type'] != 'UpgradeComponent':
-            return None
-        if result['details']['type'] != 'Rune':
-            return None
-        if result['name'] in ('', 'Legendary Rune'):
-            return None
-
-        return Rune(result['id'], result['name'])
 
 
 food_prefixes = (
@@ -449,8 +399,15 @@ food_prefixes = (
 )
 
 class Food (Entity):
-    def __init__ (self, api_id, name):
-        full_id = name.lower()
+    def __init__ (self, result, storage, crawler):
+        if result['type'] != 'Consumable':
+            raise SkipEntityError()
+        if result['details']['type'] != 'Food':
+            raise SkipEntityError()
+
+        self.name = result['name']
+
+        full_id = self.name.lower()
         ids = [full_id]
         for prefix in food_prefixes:
             full_prefix = f'{prefix} of '
@@ -458,40 +415,26 @@ class Food (Entity):
                 ids.append(full_id[len(full_prefix):])
                 break
 
-        Entity.__init__(self, api_id, ids)
-        self.name = name
+        Entity.__init__(self, result['id'], ids)
 
     @staticmethod
     def path ():
         return ('items',)
-
-    @staticmethod
-    def from_api (result, storage, crawler=None):
-        if result['type'] != 'Consumable':
-            return None
-        if result['details']['type'] != 'Food':
-            return None
-
-        return Food(result['id'], result['name'])
 
 
 class UtilityConsumable (Entity):
-    def __init__ (self, api_id, name):
-        Entity.__init__(self, api_id, name)
-        self.name = name
+    def __init__ (self, result, storage, crawler):
+        if result['type'] != 'Consumable':
+            raise SkipEntityError()
+        if result['details']['type'] != 'Utility':
+            raise SkipEntityError()
+
+        self.name = result['name']
+        Entity.__init__(self, result['id'], self.name)
 
     @staticmethod
     def path ():
         return ('items',)
-
-    @staticmethod
-    def from_api (result, storage, crawler=None):
-        if result['type'] != 'Consumable':
-            return None
-        if result['details']['type'] != 'Utility':
-            return None
-
-        return UtilityConsumable(result['id'], result['name'])
 
 
 BUILTIN_TYPES = [

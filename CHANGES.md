@@ -9,6 +9,8 @@
     - `entity.Profession`: add `can_wield` method
     - `entity.Skill`: add `type_`, `professions`, `weapon_type` and `is_aquatic`
       attributes
+    - **breaking**: remove `entity.Entity.from_api` - now implement using
+      subclass constructors
 - `buildtemplate`:
     - fix bug: parsing would set `BuildMetadata.elite_spec` to a
       `SpecialisationChoices` instance instead of a `Specialisation` instance

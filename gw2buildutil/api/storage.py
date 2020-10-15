@@ -133,7 +133,7 @@ class FileStorage (Storage):
             self._db[id_key] = json.dumps(tuple(set(data)))
 
     def from_api_id (self, entity_type, api_id):
-        return entity_type.from_api(self.raw(entity_type.path(), api_id), self)
+        return entity_type(self.raw(entity_type.path(), api_id), self, None)
 
     def all_from_id (self, entity_type, id_):
         key = self._id_key(entity_type, id_)

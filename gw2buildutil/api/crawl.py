@@ -39,8 +39,11 @@ class Crawler:
         for api_id in api_ids:
             for entity_type in entity_types:
                 result = self.storage.raw(path, api_id)
-                entity = entity_type.from_api(result, self.storage, self)
-                if entity is not None:
+                try:
+                    entity = entity_type(result, self.storage, self)
+                except gw2entity.SkipEntityError:
+                    pass
+                else:
                     self.storage.store(entity)
 
     def crawl (self, entity_type, api_ids):
