@@ -5,6 +5,12 @@ import re
 from .. import build, util
 
 
+def _load_dep (entity_type, api_id, storage, crawler):
+    if crawler is not None:
+        crawler.crawl(entity_type, (api_id,))
+    return storage.from_api_id(entity_type, api_id)
+
+
 class Entity (abc.ABC, util.Identified):
     def __init__ (self, api_id, ids):
         util.Identified.__init__ (self, ids)
@@ -122,10 +128,7 @@ class Specialisation (Entity):
 
     @staticmethod
     def from_api (result, storage, crawler=None):
-        prof_api_id = result['profession']
-        if crawler is not None:
-            crawler.crawl(Profession, (prof_api_id,))
-        prof = storage.from_api_id(Profession, prof_api_id)
+        prof = _load_dep(Profession, result['profession'], storage, crawler)
         return Specialisation(
             result['id'], result['name'], prof, result['elite'])
 
@@ -191,9 +194,7 @@ class Skill (Entity):
         prof_api_ids = result.get('professions', ())
         profs = []
         for prof_api_id in prof_api_ids:
-            if crawler is not None:
-                crawler.crawl(Profession, (prof_api_id,))
-            profs.append(storage.from_api_id(Profession, prof_api_id))
+            profs.append(_load_dep(Profession, prof_api_id, storage, crawler))
 
         if type_ == build.SkillTypes.WEAPON:
             try:
@@ -275,25 +276,18 @@ class RevenantLegend (Entity):
 
     @staticmethod
     def from_api (result, storage, crawler=None):
-        if crawler is not None:
-            crawler.crawl(Skill, (result['swap'],))
-        swap_skill = storage.from_api_id(Skill, result['swap'])
+        swap_skill = _load_dep(Skill, result['swap'], storage, crawler)
         name = swap_skill.name
         if name.startswith('Legendary '):
             name = name[len('Legendary '):]
         if name.endswith(' Stance'):
             name = name[:-len(' Stance')]
 
-        def lookup_skill (api_id):
-            if crawler is not None:
-                crawler.crawl(Skill, (api_id,))
-            return storage.from_api_id(Skill, api_id)
-
         skills = {
-            'heal': lookup_skill(result['heal']),
-            'utilities': [lookup_skill(api_id)
+            'heal': _load_dep(Skill, result['heal'], storage, crawler),
+            'utilities': [_load_dep(Skill, api_id, storage, crawler)
                           for api_id in result['utilities']],
-            'elite': lookup_skill(result['elite']),
+            'elite': _load_dep(Skill, result['elite'], storage, crawler),
         }
 
         return RevenantLegend(result['id'], name, result['code'], skills)
