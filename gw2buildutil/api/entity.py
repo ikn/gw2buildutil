@@ -15,15 +15,15 @@ class SkipEntityError (ValueError):
     pass
 
 
-class Entity (abc.ABC, util.Identified):
+class Entity (abc.ABC, util.Typed, util.Identified):
     # subclass constructors take arguments (result, storage, crawler)
     # raise SkipEntityError to skip
     def __init__ (self, api_id, ids):
         util.Identified.__init__ (self, ids)
         self.api_id = api_id
 
-    def __eq__ (self, other):
-        return type(self) is type(other) and self.api_id == other.api_id
+    def _value (self):
+        return self.api_id
 
     @classmethod
     def type_id (cls):

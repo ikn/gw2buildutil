@@ -15,14 +15,11 @@ def _enum_id_lookup (enum_cls):
     return lookup
 
 
-class GameMode (util.Identified):
+class GameMode (util.Typed, util.Identified):
     def __init__ (self, name, suitable_game_modes):
         util.Identified.__init__(self, name)
         self.name = name
         self.suitable_game_modes = tuple(suitable_game_modes)
-
-    def __str__ (self):
-        return self.name
 
 
 class GameModes (enum.Enum):
@@ -41,18 +38,25 @@ class GameModes (enum.Enum):
 _game_modes_id_lookup = _enum_id_lookup(GameModes)
 
 
-class BuildMetadata:
+class BuildMetadata (util.Typed):
     def __init__ (self, game_mode, profession, elite_spec, labels=()):
-        self.game_mode = game_mode
+        self.game_mode = game_mode # can be None
         self.profession = profession
         self.elite_spec = elite_spec
         self.labels = tuple(labels)
 
+    def __str__ (self):
+        return self.title
+
+    def _value (self):
+        return (self.game_mode, self.profession, self.elite_spec, self.labels)
+
     @property
     def title (self):
         spec = self.profession if self.elite_spec is None else self.elite_spec
-        return (f'{self.game_mode.value.name} {spec.name}: '
-                f'{", ".join(self.labels)}')
+        prefix = ('' if self.game_mode is None
+                  else (self.game_mode.value.name + ' '))
+        return f'{prefix}{spec.name}: {", ".join(self.labels)}'
 
 
 class TextBody:
@@ -64,7 +68,7 @@ class MarkdownBody (TextBody):
         self.text = text
 
 
-class WeaponType (util.Identified):
+class WeaponType (util.Typed, util.Identified):
     def __init__ (self, ids, hands):
         util.Identified.__init__(self, ids)
         self.hands = hands
@@ -101,7 +105,7 @@ class WeaponTypes (enum.Enum):
 _weapon_types_id_lookup = _enum_id_lookup(WeaponTypes)
 
 
-class WeaponHand (util.Identified):
+class WeaponHand (util.Typed, util.Identified):
     def __init__ (self, ids, hands):
         util.Identified.__init__(self, ids)
         self.hands = hands
@@ -125,13 +129,7 @@ class UpgradeTiers (enum.Enum):
     SUPERIOR = 'superior'
 
 
-class Sigil:
-    def __init__ (self, name, tier):
-        self.name = name
-        self.tier = tier
-
-
-class PvpSigil (util.Identified):
+class PvpSigil (util.Typed, util.Identified):
     def __init__ (self, name):
         util.Identified.__init__(self, name)
         self.name = name
@@ -171,7 +169,7 @@ class PvpSigils (enum.Enum):
 _pvp_sigils_id_lookup = _enum_id_lookup(PvpSigils)
 
 
-class Weapon:
+class Weapon (util.Typed):
     def __init__ (self, type_, hand, stats, sigils):
         self.type_ = type_
         self.hand = hand
@@ -182,8 +180,15 @@ class Weapon:
             raise BuildError('wrong number of sigils for '
                              '{}: {}'.format(self.hand, len(self.sigils)))
 
+    def __str__ (self):
+        return (f'{self.hand.value}-hand {self.stats} {self.type_.value} '
+                f'({", ".join(map(str, self.sigils))})')
 
-class Weapons:
+    def _value (self):
+        return (self.type_, self.hand, self.stats, self.sigils)
+
+
+class Weapons (util.Typed):
     def __init__ (self, set1, set2=None):
         self.set1 = tuple(set1)
         self.set2 = None if set2 is None else tuple(set2)
@@ -200,6 +205,9 @@ class Weapons:
                     'invalid weapon set: '
                     f'{", ".join(weapon.type_.name for weapon in set_)}')
 
+    def _value (self):
+        return (self.set1, self.set2)
+
     def check_profession (self, profession, elite_spec):
         for set_ in (self.set1, self.set2):
             if set_ is None:
@@ -212,13 +220,7 @@ class Weapons:
                         f'{weapon.type_.name} in {weapon.hand.name}')
 
 
-class Rune:
-    def __init__ (self, name, tier):
-        self.name = name
-        self.tier = tier
-
-
-class PvpRune (util.Identified):
+class PvpRune (util.Typed, util.Identified):
     def __init__ (self, name):
         util.Identified.__init__(self, name)
         self.name = name
@@ -313,7 +315,7 @@ class PvpRunes (enum.Enum):
 _pvp_runes_id_lookup = _enum_id_lookup(PvpRunes)
 
 
-class ArmourType (util.Identified):
+class ArmourType (util.Typed, util.Identified):
     def __init__ (self, ids):
         util.Identified.__init__(self, ids)
 
@@ -333,14 +335,20 @@ class ArmourTypes (enum.Enum):
 _armour_types_id_lookup = _enum_id_lookup(ArmourTypes)
 
 
-class ArmourPiece:
+class ArmourPiece (util.Typed):
     def __init__ (self, type_, stats, rune):
         self.type_ = type_
         self.stats = stats
         self.rune = rune
 
+    def __str__ (self):
+        return f'{self.stats} {self.type_.value} ({self.rune})'
 
-class Armour:
+    def _value (self):
+        return (self.type_, self.stats, self.rune)
+
+
+class Armour (util.Typed):
     def __init__ (self, pieces):
         self.pieces = {p.type_: p for p in pieces}
 
@@ -351,10 +359,19 @@ class Armour:
             raise BuildError('not all armour types are present: '
                              '{}'.format(list(self.pieces.keys())))
 
+    def _value (self):
+        return tuple(self.pieces.items())
 
-class PvpArmour:
+
+class PvpArmour (util.Typed):
     def __init__ (self, rune):
         self.rune = rune
+
+    def __str__ (self):
+        return str(self.rune)
+
+    def _value (self):
+        return self.rune
 
 
 class TrinketTypes (enum.Enum):
@@ -366,13 +383,19 @@ class TrinketTypes (enum.Enum):
     RING_2 = 'ring 2'
 
 
-class Trinket:
+class Trinket (util.Typed):
     def __init__ (self, type_, stats):
         self.type_ = type_
         self.stats = stats
 
+    def __str__ (self):
+        return f'{self.stats} {self.type_.value}'
 
-class Trinkets:
+    def _value (self):
+        return (self.type_, self.stats)
+
+
+class Trinkets (util.Typed):
     def __init__ (self, pieces):
         self.pieces = {p.type_: p for p in pieces}
 
@@ -382,6 +405,9 @@ class Trinkets:
         if len(self.pieces) != 6:
             raise BuildError('not all trinket types are present: '
                              '{}'.format(list(self.pieces.keys())))
+
+    def _value (self):
+        return tuple(self.pieces.items())
 
 
 class GearGroup (util.Identified):
@@ -406,37 +432,49 @@ _gear_groups_id_lookup.update(_armour_types_id_lookup)
 _gear_groups_id_lookup.update({type_.value: type_ for type_ in TrinketTypes})
 
 
-class Consumables:
+class Consumables (util.Typed):
     def __init__ (self, food=None, utility=None):
         self.food = food
         self.utility = utility
 
+    def _value (self):
+        return (self.food, self.utility)
 
-class Gear:
+
+class Gear (util.Typed):
     def __init__ (self, weapons, armour, trinkets, consumables):
         self.weapons = weapons
         self.armour = armour
         self.trinkets = trinkets
         self.consumables = consumables
 
+    def _value (self):
+        return (self.weapons, self.armour, self.trinkets, self.consumables)
+
     def check_profession (self, profession, elite_spec):
         self.weapons.check_profession(profession, elite_spec)
 
 
-class PvpGear:
+class PvpGear (util.Typed):
     def __init__ (self, stats, weapons, armour):
         self.stats = stats
         self.weapons = weapons
         self.armour = armour
 
+    def _value (self):
+        return (self.stats, self.weapons, self.armour)
+
     def check_profession (self, profession, elite_spec):
         self.weapons.check_profession(profession, elite_spec)
 
 
-class TraitChoice:
+class TraitChoice (util.Typed):
     def __init__ (self, index, name):
         self.index = index
         self.name = name
+
+    def _value (self):
+        return self.index
 
 
 class TraitChoices (enum.Enum):
@@ -452,7 +490,7 @@ _trait_choices_index_lookup = {choice.value.index: choice
                                for choice in TraitChoices}
 
 
-class SpecialisationChoices:
+class SpecialisationChoices (util.Typed):
     def __init__ (self, spec, choices):
         self.spec = spec
         self.choices = tuple(choices) # items can be None
@@ -461,8 +499,15 @@ class SpecialisationChoices:
             raise BuildError('expected 3 trait choices, got '
                              f'{len(self.choices)}')
 
+    def __str__ (self):
+        return (f'{self.spec} '
+                f'{" ".join(str(choice.value) for choice in self.choices)}')
 
-class Traits:
+    def _value (self):
+        return (self.spec, self.choices)
+
+
+class Traits (util.Typed):
     def __init__ (self, specs):
         self.specs = tuple(specs) # items can be None
 
@@ -485,6 +530,9 @@ class Traits:
         if len(elite_specs) > 1:
             raise BuildError('multiple elite specialisations are selected: '
                              f'{", ".join(spec.name for spec in elite_specs)}')
+
+    def _value (self):
+        return self.specs
 
     def check_profession (self, profession, elite_spec):
         actual_elite_spec = None
@@ -529,7 +577,7 @@ class SkillTypes (enum.Enum):
 _skill_types_id_lookup = _enum_id_lookup(SkillTypes)
 
 
-class Skills:
+class Skills (util.Typed):
     def __init__ (self, heal, utilities, elite):
         # skills can be None
         self.heal = heal
@@ -553,6 +601,9 @@ class Skills:
         if self.elite is not None and self.elite.type_ != SkillTypes.ELITE:
             raise BuildError(f'not an elite skill: {self.elite.name}')
 
+    def _value (self):
+        return (self.heal, self.utilities, self.elite)
+
     def check_profession (self, profession):
         for skill in (self.heal,) + self.utilities + (self.elite,):
             if skill is not None and (
@@ -568,12 +619,15 @@ class Skills:
                 raise BuildError(f'skill not usable underwater: {skill.name}')
 
 
-class RevenantSkills (Skills):
+class RevenantSkills (util.Typed):
     def __init__ (self, legends):
         self.legends = tuple(legends) # items can be None
 
         if len(self.legends) != 2:
             raise BuildError(f'expected 2 legends, got {len(self.legends)}')
+
+    def _value (self):
+        return self.legends
 
     def check_profession (self, profession):
         if profession.id_ != 'revenant':
@@ -585,19 +639,25 @@ class RevenantSkills (Skills):
                 raise BuildError(f'legend not usable underwater: {legend.name}')
 
 
-class RangerPets:
+class RangerPets (util.Typed):
     def __init__ (self, pets):
         self.pets = tuple(pets) # items can be None
 
         if len(self.pets) < 1 or len(self.pets) > 2:
             raise BuildError(f'expected 1 or 2 pets, got {len(self.pets)}')
 
+    def _value (self):
+        return self.pets
 
-class RangerOptions:
+
+class RangerOptions (util.Typed):
     def __init__ (self, pets, aquatic_pets=None):
         self.pets = pets
         self.aquatic_pets = (RangerPets((None, None))
                              if aquatic_pets is None else aquatic_pets)
+
+    def _value (self):
+        return (self.pets, self.aquatic_pets)
 
 
 class Intro:
@@ -623,7 +683,7 @@ class Intro:
             self.aquatic_skills.check_profession(profession)
 
 
-class Boon (util.Identified):
+class Boon (util.Typed, util.Identified):
     def __init__ (self, name, extra_ids=()):
         ids = (name,) + (
             (extra_ids,) if isinstance(extra_ids, str) else tuple(extra_ids))
@@ -652,7 +712,7 @@ class Boons (enum.Enum):
 _boons_id_lookup = _enum_id_lookup(Boons)
 
 
-class BoonTarget (util.Identified):
+class BoonTarget (util.Typed, util.Identified):
     def __init__ (self, num, name):
         util.Identified.__init__(self, (str(num), name))
         self.num = num

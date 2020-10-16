@@ -14,6 +14,8 @@
 - `buildtemplate`:
     - fix bug: parsing would set `BuildMetadata.elite_spec` to a
       `SpecialisationChoices` instance instead of a `Specialisation` instance
+- implement `__str__`, `__repr__`, `__eq__` and `__hash__` where appropriate for
+  classes in `build` and `api.entity`
 
 # 0.2 (2020-10-08)
 
