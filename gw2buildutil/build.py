@@ -604,13 +604,19 @@ class Skills (util.Typed):
     def _value (self):
         return (self.heal, self.utilities, self.elite)
 
-    def check_profession (self, profession):
+    def check_profession (self, profession, elite_spec):
         for skill in (self.heal,) + self.utilities + (self.elite,):
-            if skill is not None and (
-                len(skill.professions) != 1 or
+            if skill is None:
+                continue
+
+            if (len(skill.professions) != 1 or
                 next(iter(skill.professions)) != profession
             ):
                 raise BuildError(f'not a skill for {profession.name}: '
+                                 f'{skill.name}')
+
+            if skill.elite_spec is not None and skill.elite_spec != elite_spec:
+                raise BuildError(f'skill requires {skill.elite_spec.name}: '
                                  f'{skill.name}')
 
     def check_aquatic (self):
@@ -629,7 +635,7 @@ class RevenantSkills (util.Typed):
     def _value (self):
         return self.legends
 
-    def check_profession (self, profession):
+    def check_profession (self, profession, elite_spec):
         if profession.id_ != 'revenant':
             raise BuildError(f'{profession.name} cannot use Revenant legends')
 
@@ -678,9 +684,9 @@ class Intro:
         if self.gear is not None:
             self.gear.check_profession(profession, elite_spec)
         self.traits.check_profession(profession, elite_spec)
-        self.skills.check_profession(profession)
+        self.skills.check_profession(profession, elite_spec)
         if self.aquatic_skills is not None:
-            self.aquatic_skills.check_profession(profession)
+            self.aquatic_skills.check_profession(profession, elite_spec)
 
 
 class Boon (util.Typed, util.Identified):
