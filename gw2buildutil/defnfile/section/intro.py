@@ -302,9 +302,15 @@ def parse_revenant_skills (lines, api_storage):
         for legend_text in legends_text])
 
 
-def lookup_skill (id_, api_storage):
+def lookup_skill (id_, type_, meta, api_storage):
+    S = api.entity.Skill
+    filters = S.filter_type(type_)
+    if meta.elite_spec is not None:
+        filters += S.filter_elite_spec(meta.elite_spec)
+    filters += S.filter_has_build_id
+
     try:
-        return api_storage.from_id(api.entity.Skill, id_)
+        return api_storage.from_id(S, id_, filters)
     except KeyError:
         raise util.ParseError(f'unknown skill: {id_}')
 
@@ -323,9 +329,10 @@ def parse_skills (lines, meta, api_storage):
         parse_text.parse_words_seq(lines[1], 'utility skills', 3))
     elite_skill_id = parse_text.parse_words_seq(lines[2], 'elite skill', 1)[0]
     return build.Skills(
-        lookup_skill(heal_skill_id, api_storage),
-        [lookup_skill(s, api_storage) for s in utility_skill_ids],
-        lookup_skill(elite_skill_id, api_storage))
+        lookup_skill(heal_skill_id, build.SkillTypes.HEAL, meta, api_storage),
+        [lookup_skill(s, build.SkillTypes.UTILITY, meta, api_storage)
+         for s in utility_skill_ids],
+        lookup_skill(elite_skill_id, build.SkillTypes.ELITE, meta, api_storage))
 
 
 def parse (lines, meta, api_storage):

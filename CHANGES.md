@@ -16,6 +16,9 @@
     - **breaking**: remove `entity.Entity.filter`
     - **breaking**: change `filters` argument to `storage.Storage.from_id` to a
       `storage.Storage.Filters` object
+- `defnfile`:
+    - allow skill abbreviations that were previously ambiguous by filtering to
+      the current context (uses skill type, profession and elite spec)
 - `buildtemplate`:
     - fix bug: parsing would set `BuildMetadata.elite_spec` to a
       `SpecialisationChoices` instance instead of a `Specialisation` instance
