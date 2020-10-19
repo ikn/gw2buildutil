@@ -4,7 +4,23 @@ import json
 import dbm
 
 from .. import util
-from . import client as gw2client, entity as gw2entity
+
+
+class Filters:
+    def __init__ (self, filters=()):
+        self._filters = tuple(filters)
+
+    def __add__ (self, other):
+        if not isinstance(other, Filters):
+            return NotImplemented
+        return Filters(self._filters + other._filters)
+
+    def filter_ (self, entities):
+        for filter_ in self._filters:
+            if len(entities) <= 1:
+                break
+            entities = filter_(entities)
+        return entities
 
 
 class Storage (abc.ABC):
@@ -44,17 +60,16 @@ class Storage (abc.ABC):
     def all_from_id (self, entity_type, id_):
         pass
 
-    def from_id (self, entity_type, id_, filters=()):
-        entities = self.all_from_id(entity_type, id_)
-        filters = list(filters)
-        filters.extend(entity_type.filters())
-        for filter_ in filters:
-            entities = filter_(entities)
-            if len(entities) == 1:
-                return entities[0]
-            if len(entities) == 0:
-                break
-        raise KeyError((entity_type, id_))
+    def from_id (self, entity_type, id_, filters=Filters()):
+        filters += entity_type.default_filters
+        entities = filters.filter_(self.all_from_id(entity_type, id_))
+        if len(entities) == 1:
+            return entities[0]
+        elif entities:
+            raise KeyError(f'not unique: {repr(id_)} - matches: '
+                           f'{", ".join(repr(e.id_) for e in entities)}')
+        else:
+            raise KeyError(id_)
 
     @abc.abstractmethod
     def clear (self):

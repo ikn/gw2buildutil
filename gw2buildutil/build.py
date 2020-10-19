@@ -608,7 +608,7 @@ class Skills (util.Typed):
         for skill in (self.heal,) + self.utilities + (self.elite,):
             if skill is not None and (
                 len(skill.professions) != 1 or
-                skill.professions[0] != profession
+                next(iter(skill.professions)) != profession
             ):
                 raise BuildError(f'not a skill for {profession.name}: '
                                  f'{skill.name}')

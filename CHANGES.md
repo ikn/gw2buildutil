@@ -7,10 +7,15 @@
     - **breaking**: remove aquatic weapon types until they're properly supported
 - `api`:
     - `entity.Profession`: add `can_wield` method
-    - `entity.Skill`: add `type_`, `professions`, `weapon_type` and `is_aquatic`
-      attributes
+    - `entity.Skill`: add `type_`, `professions`, `elite_spec`, `weapon_type`,
+      `is_aquatic`, `filter_has_build_id`, `filter_profession`,
+      `filter_elite_spec` and `filter_type` attributes
+    - `entity.Stats`: add `filter_endgame` and `filter_not_mixed` attributes
     - **breaking**: remove `entity.Entity.from_api` - now implement using
       subclass constructors
+    - **breaking**: remove `entity.Entity.filter`
+    - **breaking**: change `filters` argument to `storage.Storage.from_id` to a
+      `storage.Storage.Filters` object
 - `buildtemplate`:
     - fix bug: parsing would set `BuildMetadata.elite_spec` to a
       `SpecialisationChoices` instance instead of a `Specialisation` instance

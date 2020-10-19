@@ -4,6 +4,8 @@ import re
 
 from .. import build, util
 
+from . import storage as gw2storage
+
 
 def _load_dep (entity_type, api_id, storage, crawler):
     if crawler is not None:
@@ -41,7 +43,7 @@ class Entity (abc.ABC, util.Typed, util.Identified):
         pass
 
     @staticmethod
-    def _filter_use_first (entities):
+    def _filter_first_by_name (entities):
         # filter to entity with earliest API ID (for determinism), for each
         # unique name
         by_name = {}
@@ -50,9 +52,9 @@ class Entity (abc.ABC, util.Typed, util.Identified):
         return [sorted(group, key=lambda e: e.api_id)[0]
                 for group in by_name.values()]
 
-    @staticmethod
-    def filters ():
-        return [Entity._filter_use_first]
+    default_filters = gw2storage.Filters((
+        lambda entities: Entity._filter_first_by_name(entities),
+    ))
 
 
 class Profession (Entity):
@@ -146,10 +148,15 @@ class Skill (Entity):
             raise SkipEntityError()
 
         prof_api_ids = result.get('professions', ())
-        self.professions = []
+        self.professions = set()
         for prof_api_id in prof_api_ids:
-            self.professions.append(
+            self.professions.add(
                 _load_dep(Profession, prof_api_id, storage, crawler))
+
+        elite_spec_api_id = result.get('specialization')
+        self.elite_spec = (
+            None if elite_spec_api_id is None
+            else _load_dep(Specialisation, elite_spec_api_id, storage, crawler))
 
         if self.type_ == build.SkillTypes.WEAPON:
             try:
@@ -165,10 +172,10 @@ class Skill (Entity):
         self.build_id = None
         storage_build_id = None
         if len(self.professions) == 1:
-            self.build_id = self.professions[0].skills_build_ids.get(api_id)
+            prof = next(iter(self.professions))
+            self.build_id = prof.skills_build_ids.get(api_id)
             if self.build_id is not None:
-                storage_build_id = Skill._storage_build_id(
-                    self.professions[0], self.build_id)
+                storage_build_id = Skill._storage_build_id(prof, self.build_id)
 
         ids = [id_]
         if full_id != id_:
@@ -205,20 +212,29 @@ class Skill (Entity):
         storage_build_id = Skill._storage_build_id(profession, build_id)
         return storage.from_id(Skill, storage_build_id)
 
-    @staticmethod
-    def _filter_not_chained (skills):
-        return [s for s in skills if not s.is_chained]
+    filter_has_build_id = gw2storage.Filters((
+        lambda skills: [s for s in skills if s.build_id is not None],
+    ))
 
     @staticmethod
-    def _filter_has_build_id (skills):
-        return [s for s in skills if s.build_id is not None]
+    def filter_profession (profession):
+        return gw2storage.Filters((
+            lambda skills: [s for s in skills if profession in s.professions],
+        ))
 
     @staticmethod
-    def filters ():
-        return [
-            Skill._filter_not_chained,
-            Skill._filter_has_build_id,
-        ] + Entity.filters()
+    def filter_elite_spec (elite_spec):
+        return gw2storage.Filters((
+            lambda skills: [s for s in skills if (
+                s.elite_spec is None or s.elite_spec == elite_spec
+            )],
+        ))
+
+    @staticmethod
+    def filter_type (type_):
+        return gw2storage.Filters((
+            lambda skills: [s for s in skills if s.type_ == type_],
+        ))
 
 
 # not obtainable through the API in any sensible way
@@ -302,20 +318,15 @@ class Stats (Entity):
     def path ():
         return ('itemstats',)
 
-    @staticmethod
-    def _filter_endgame (stat_sets):
-        return [stats for stats in stat_sets if stats.num_attributes >= 3]
+    filter_endgame = gw2storage.Filters((
+        lambda stat_sets: [stats for stats in stat_sets
+                           if stats.num_attributes >= 3],
+        ))
 
-    @staticmethod
-    def _filter_not_mixed (stat_sets):
-        return [stats for stats in stat_sets if stats.name.find(' and ') < 0]
-
-    @staticmethod
-    def filters ():
-        return [
-            Stats._filter_endgame,
-            Stats._filter_not_mixed,
-        ] + Entity.filters()
+    filter_not_mixed = gw2storage.Filters((
+        lambda stat_sets: [stats for stats in stat_sets
+                           if stats.name.find(' and ') < 0],
+    ))
 
 
 class PvpStats (Entity):
