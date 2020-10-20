@@ -1,4 +1,4 @@
-# 0.2-next
+# 0.3
 
 - `build`:
     - perform a lot more validation when constructing instances
