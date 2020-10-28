@@ -2,6 +2,10 @@
 
 - `build`:
     - **breaking**: remove `MarkdownBody`
+    - add more trait stuff: `TraitTier` (`TraitTiers`), `TraitType`
+      (`TraitTypes`), `TraitChoices.from_api_id`
+- `api`:
+    - add `entity.Trait`
 - `textbody`: new module
 - `defnfile`:
     - parse `usage` and `notes` sections

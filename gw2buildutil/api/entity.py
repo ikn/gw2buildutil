@@ -124,6 +124,33 @@ class Specialisation (Entity):
         return ('specializations',)
 
 
+class Trait (Entity):
+    def __init__ (self, result, storage, crawler):
+        self.name = result['name']
+        self.specialisation = _load_dep(
+            Specialisation, result['specialization'], storage, crawler)
+        self.tier = build.TraitTiers.from_api_id(result['tier'])
+        self.type_ = build.TraitTypes.from_api_id(result['slot'])
+        self.choice = (None if self.type_ == build.TraitTypes.MINOR
+                       else build.TraitChoices.from_api_id(result['order']))
+
+        ids = [self.name]
+        if self.choice is not None:
+            ids.append(f'{self.specialisation.name} '
+                       f'{self.tier.value.api_id}-'
+                       f'{self.choice.value.index + 1}')
+
+        Entity.__init__(self, result['id'], ids)
+
+    @staticmethod
+    def crawl_dependencies ():
+        return set([Specialisation])
+
+    @staticmethod
+    def path ():
+        return ('traits',)
+
+
 class Skill (Entity):
     def __init__ (self, result, storage, crawler):
         api_id = result['id']
@@ -197,7 +224,7 @@ class Skill (Entity):
 
     @staticmethod
     def crawl_dependencies ():
-        return set([Profession])
+        return set([Profession, Specialisation])
 
     @staticmethod
     def path ():

@@ -465,9 +465,52 @@ class PvpGear (util.Typed):
         self.weapons.check_profession(profession, elite_spec)
 
 
+class TraitTier (util.Typed):
+    def __init__ (self, api_id, name):
+        self.api_id = api_id
+        self.name = name
+
+    def _value (self):
+        return self.api_id
+
+
+class TraitTiers (enum.Enum):
+    WEAPON = TraitTier(0, 'Weapon')
+    ADEPT = TraitTier(1, 'Adept')
+    MASTER = TraitTier(2, 'Master')
+    GRANDMASTER = TraitTier(3, 'Grandmaster')
+
+    @staticmethod
+    def from_api_id (api_id):
+        return _trait_tiers_api_id_lookup[api_id]
+
+_trait_tiers_api_id_lookup = {tier.value.api_id: tier for tier in TraitTiers}
+
+
+class TraitType (util.Typed):
+    def __init__ (self, api_id):
+        self.api_id = api_id
+        self.name = api_id
+
+    def _value (self):
+        return self.api_id
+
+
+class TraitTypes (enum.Enum):
+    MINOR = TraitType('Minor')
+    MAJOR = TraitType('Major')
+
+    @staticmethod
+    def from_api_id (api_id):
+        return _trait_types_api_id_lookup[api_id]
+
+_trait_types_api_id_lookup = {type_.value.api_id: type_ for type_ in TraitTypes}
+
+
 class TraitChoice (util.Typed):
     def __init__ (self, index, name):
         self.index = index
+        self.api_id = index
         self.name = name
 
     def _value (self):
@@ -482,6 +525,10 @@ class TraitChoices (enum.Enum):
     @staticmethod
     def from_index (index):
         return _trait_choices_index_lookup[index]
+
+    @staticmethod
+    def from_api_id (api_id):
+        return TraitChoices.from_index(api_id)
 
 _trait_choices_index_lookup = {choice.value.index: choice
                                for choice in TraitChoices}
