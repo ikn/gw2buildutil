@@ -1,5 +1,9 @@
 # 0.3-next
 
+- `build`:
+    - **breaking**: remove `MarkdownBody`
+- `textbody`: new module
+
 # 0.3
 
 - `build`:

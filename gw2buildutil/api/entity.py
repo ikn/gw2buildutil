@@ -252,14 +252,13 @@ class RevenantLegend (Entity):
     def __init__ (self, result, storage, crawler):
         swap_skill = _load_dep(Skill, result['swap'], storage, crawler)
         self.name = swap_skill.name
-        if self.name.startswith('Legendary '):
-            self.name = self.name[len('Legendary '):]
-        if self.name.endswith(' Stance'):
-            self.name = self.name[:-len(' Stance')]
-
         self.build_id = result['code']
 
         id_ = self.name.lower()
+        if id_.startswith('legendary '):
+            id_ = id_[len('legendary '):]
+        if id_.endswith(' stance'):
+            id_ = id_[:-len(' Stance')]
         ids = [id_]
         ids.extend(_legend_ids.get(id_, ()))
         ids.append(self.build_id)

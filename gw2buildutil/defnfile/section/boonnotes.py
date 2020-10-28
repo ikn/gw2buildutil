@@ -1,7 +1,7 @@
 import re
 
-from ... import build
-from .. import util
+from ... import build, util
+from .. import parseutil
 
 
 uptimes_pattern = re.compile('^'
@@ -11,8 +11,8 @@ uptimes_pattern = re.compile('^'
 def parse_uptime (line):
     uptimes = []
     if uptimes_pattern.match(line) is None:
-        raise util.ParseError('boon uptime definition doesn\'t match expected '
-                              'format: {}'.format(repr(line)))
+        raise parseutil.ParseError('boon uptime definition doesn\'t match '
+                                   f'expected format: {repr(line)}')
 
     for boon_uptime_text in line.split(', '):
         if ' ' in boon_uptime_text:
@@ -25,12 +25,12 @@ def parse_uptime (line):
         uptime = None if uptime_text is None else int(uptime_text[:-1])
         target = build.BoonTargets.from_id(target_text)
         if target is None:
-            raise util.ParseError(
+            raise parseutil.ParseError(
                 'boon uptime definition has a missing or incorrect target '
                 'count identifier: {}'.format(repr(boon_uptime_text)))
         boon = build.Boons.from_id(boon_text)
         if boon is None:
-            raise util.ParseError(
+            raise parseutil.ParseError(
                 'boon uptime definition has a missing or incorrect boon '
                 'identifier: {}'.format(repr(boon_uptime_text)))
         uptimes.append(build.BoonUptime(boon, target, uptime))
@@ -43,10 +43,10 @@ def parse (lines, meta, api_storage):
     paragraphs = list(util.group_paragraphs(
         util.strip_empty_lines(lines, inner='collapse')))
     if len(paragraphs) < 1:
-        raise util.ParseError('boon notes is incomplete')
+        raise parseutil.ParseError('boon notes is incomplete')
 
     boon_variants = [build.BoonUptimeVariant(parse_uptime(line))
                      for line in paragraphs[0]]
 
-    # TODO: other lines
+    # TODO: other lines - variants can change build and usage/rotation
     return build.BoonNotes(boon_variants)

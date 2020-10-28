@@ -1,36 +1,37 @@
 import re
 import collections
 
-from ... import build
-from ... import api
-from .. import util, text as parse_text
+from ... import build, api, util
+from .. import parseutil
 
-wds_pat = parse_text.words_pattern
+wds_pat = parseutil.words_pattern
 
 
 url_pattern = re.compile(r'^http://gw2skills.net/editor/\?[A-Za-z0-9+-/]+$')
 
 def parse_url (lines):
     if len(lines) > 1:
-        raise util.ParseError('first intro paragraph should have only 1 line')
+        raise parseutil.ParseError(
+            'first intro paragraph should have only 1 line')
     if url_pattern.match(lines[0]) is None:
-        raise util.ParseError('first intro line doesn\'t look like a valid URL')
+        raise parseutil.ParseError(
+            'first intro line doesn\'t look like a valid URL')
     return lines[0]
 
 
 def parse_description (paragraphs):
-    return build.MarkdownBody(
+    return build.TextBody(
         '\n\n'.join('\n'.join(lines) for lines in paragraphs))
 
 
 stats_pattern = re.compile('^'
-    f'{parse_text.sep_pattern(", ", parse_text.sep_pattern(" + ", wds_pat))}'
+    f'{parseutil.sep_pattern(", ", parseutil.sep_pattern(" + ", wds_pat))}'
     '$')
 
 def parse_stats (line, meta, api_storage):
     if stats_pattern.match(line) is None:
-        raise util.ParseError('stats definition doesn\'t match expected '
-                              'format: {}'.format(repr(line)))
+        raise parseutil.ParseError('stats definition doesn\'t match expected '
+                                   'format: {}'.format(repr(line)))
 
     stats_entity_type = (
         api.entity.PvpStats if meta.game_mode is build.GameModes.PVP
@@ -41,8 +42,8 @@ def parse_stats (line, meta, api_storage):
         try:
             stats = api_storage.from_id(stats_entity_type, words[0])
         except KeyError:
-            raise util.ParseError(f'unknown stats: {words[0]}')
-        gear_groups = parse_text.parse_gear_groups(section[len(words[0]) + 1:])
+            raise parseutil.ParseError(f'unknown stats: {words[0]}')
+        gear_groups = parseutil.parse_gear_groups(section[len(words[0]) + 1:])
 
         if not gear_groups:
             gear_stats[None] = stats
@@ -50,7 +51,7 @@ def parse_stats (line, meta, api_storage):
             gear_stats[gear_group] = stats
 
     if None not in gear_stats:
-        raise util.ParseError('no default stats found')
+        raise parseutil.ParseError('no default stats found')
     return gear_stats
 
 
@@ -65,7 +66,7 @@ def lookup_sigil (id_, api_storage):
     try:
         return api_storage.from_id(api.entity.Sigil, id_)
     except KeyError:
-        raise util.ParseError(f'unknown sigil: {id_}')
+        raise parseutil.ParseError(f'unknown sigil: {id_}')
 
 
 weapons_pattern = re.compile('^'
@@ -76,8 +77,8 @@ weapons_pattern = re.compile('^'
 def parse_weapons (line, stats, meta, api_storage):
     match = weapons_pattern.match(line)
     if match is None:
-        raise util.ParseError('weapons definition doesn\'t match expected '
-                              'format: {}'.format(repr(line)))
+        raise parseutil.ParseError('weapons definition doesn\'t match expected '
+                                   'format: {}'.format(repr(line)))
     fields = match.groupdict()
     parse_sigil = (
         build.PvpSigils.from_id if meta.game_mode == build.GameModes.PVP
@@ -107,7 +108,7 @@ def lookup_rune (id_, api_storage):
     try:
         return api_storage.from_id(api.entity.Rune, id_)
     except KeyError:
-        raise util.ParseError(f'unknown rune: {id_}')
+        raise parseutil.ParseError(f'unknown rune: {id_}')
 
 
 runes_pattern = re.compile('^('
@@ -119,8 +120,8 @@ runes_pattern = re.compile('^('
 def parse_runes (runes_line):
     match = runes_pattern.match(runes_line)
     if match is None:
-        raise util.ParseError('runes definition doesn\'t match expected '
-                              'format: {}'.format(repr(runes_line)))
+        raise parseutil.ParseError('runes definition doesn\'t match expected '
+                                   'format: {}'.format(repr(runes_line)))
 
     fields = match.groupdict()
     if fields['single'] is not None:
@@ -131,7 +132,7 @@ def parse_runes (runes_line):
         runes = collections.Counter(
             {type_: int(count) for count, type_ in rune_items})
     if sum(runes.values()) != 6:
-        raise util.ParseError('wrong total rune count: {}'.format(dict(runes)))
+        raise parseutil.ParseError(f'wrong total rune count: {dict(runes)}')
     return runes
 
 
@@ -145,7 +146,7 @@ def parse_armour (runes, stats, api_storage):
 
 def parse_pvp_armour (runes, stats):
     if len(runes) > 1:
-        raise util.ParseError('different runes are not allowed in PvP')
+        raise parseutil.ParseError('different runes are not allowed in PvP')
 
     return build.PvpArmour(build.PvpRunes.from_id(next(iter(runes))))
 
@@ -176,8 +177,8 @@ traits_pattern = re.compile('^'
 
 def parse_traits (line, api_storage):
     if traits_pattern.match(line) is None:
-        raise util.ParseError('traits definition doesn\'t match expected '
-                              f'format: {repr(line)}')
+        raise parseutil.ParseError('traits definition doesn\'t match expected '
+                                   f'format: {repr(line)}')
 
     specs = []
     for spec_text in line.split(', '):
@@ -187,7 +188,7 @@ def parse_traits (line, api_storage):
         try:
             spec = api_storage.from_id(api.entity.Specialisation, id_)
         except KeyError:
-            raise util.ParseError(f'unknown specialisation: {id_}')
+            raise parseutil.ParseError(f'unknown specialisation: {id_}')
         specs.append(build.SpecialisationChoices(spec, choices))
 
     return build.Traits(specs)
@@ -200,14 +201,14 @@ def lookup_consumable (id_, api_storage):
         try:
             return api_storage.from_id(api.entity.UtilityConsumable, id_)
         except KeyError:
-            raise util.ParseError(f'unknown consumable: {id_}')
+            raise parseutil.ParseError(f'unknown consumable: {id_}')
 
 
 def parse_consumables (line, api_storage):
-    consumables_text = parse_text.parse_words_seq(line, 'consumables')
+    consumables_text = parseutil.parse_words_seq(line, 'consumables')
     if not consumables_text or len(consumables_text) > 2:
-        raise util.ParseError('expected 1 or 2 consumables, got '
-                              f'{len(consumables_text)}')
+        raise parseutil.ParseError('expected 1 or 2 consumables, got '
+                                   f'{len(consumables_text)}')
 
     consumables = [lookup_consumable(text, api_storage)
                    for text in consumables_text]
@@ -215,8 +216,9 @@ def parse_consumables (line, api_storage):
     for c in consumables:
         t = type(c)
         if t in by_type:
-            raise util.ParseError(f'multiple {t.type_id()} consumables '
-                                  f'specified: {by_type[t].name}, {c.name}')
+                 raise util.ParseError(
+                     f'multiple {t.type_id()} consumables specified: '
+                     f'{by_type[t].name}, {c.name}')
         by_type[t] = c
 
     return build.Consumables(by_type.get(api.entity.Food),
@@ -232,11 +234,11 @@ def lookup_ranger_pet (id_, api_storage):
     try:
         return api_storage.from_id(api.entity.RangerPet, id_)
     except KeyError:
-        raise util.ParseError(f'unknown ranger pet: {id_}')
+        raise parseutil.ParseError(f'unknown ranger pet: {id_}')
 
 
 def parse_ranger_options (line, api_storage):
-    ids = parse_text.parse_words_seq(line, 'ranger pets')
+    ids = parseutil.parse_words_seq(line, 'ranger pets')
     pets = build.RangerPets(
         [lookup_ranger_pet(id_, api_storage) for id_ in ids])
     return build.RangerOptions(pets)
@@ -255,11 +257,11 @@ def parse_setup (lines, meta, api_storage):
     max_lines = 5 + prof_lines
     num_lines = len(lines)
     if num_lines not in list(range(min_lines, max_lines + 1)):
-        raise util.ParseError(
+        raise parseutil.ParseError(
             'second intro paragraph has the wrong number of lines: '
             f'got {num_lines}, expected {min_lines}-{max_lines}')
     if num_lines == max_lines and meta.game_mode == build.GameModes.PVP:
-        raise util.ParseError('consumables are not allowed for PvP builds')
+        raise parseutil.ParseError('consumables are not allowed for PvP builds')
 
     stats = parse_stats(lines[1], meta, api_storage)
     if meta.game_mode == build.GameModes.PVP:
@@ -287,16 +289,16 @@ def lookup_revenant_legend (id_, api_storage):
     try:
         return api_storage.from_id(api.entity.RevenantLegend, id_)
     except KeyError:
-        raise util.ParseError(f'unknown Revenant legend: {id_}')
+        raise parseutil.ParseError(f'unknown Revenant legend: {id_}')
 
 
 def parse_revenant_skills (lines, api_storage):
     if len(lines) != 1:
-        raise util.ParseError(
+        raise parseutil.ParseError(
             'third intro paragraph has the wrong number of lines: '
             f'got {len(lines)}, expected 1')
 
-    legends_text = parse_text.parse_words_seq(lines[0], 'legends', 2)
+    legends_text = parseutil.parse_words_seq(lines[0], 'legends', 2)
     return build.RevenantSkills([
         lookup_revenant_legend(legend_text, api_storage)
         for legend_text in legends_text])
@@ -304,7 +306,7 @@ def parse_revenant_skills (lines, api_storage):
 
 def lookup_skill (id_, type_, meta, api_storage):
     S = api.entity.Skill
-    filters = S.filter_type(type_)
+    filters = S.filter_type(type_) + S.filter_profession(meta.profession)
     if meta.elite_spec is not None:
         filters += S.filter_elite_spec(meta.elite_spec)
     filters += S.filter_has_build_id
@@ -312,7 +314,7 @@ def lookup_skill (id_, type_, meta, api_storage):
     try:
         return api_storage.from_id(S, id_, filters)
     except KeyError:
-        raise util.ParseError(f'unknown skill: {id_}')
+        raise parseutil.ParseError(f'unknown skill: {id_}')
 
 
 def parse_skills (lines, meta, api_storage):
@@ -320,14 +322,14 @@ def parse_skills (lines, meta, api_storage):
         return parse_revenant_skills(lines, api_storage)
 
     if len(lines) != 3:
-        raise util.ParseError(
+        raise parseutil.ParseError(
             'third intro paragraph has the wrong number of lines: '
             f'got {len(lines)}, expected 3')
 
-    heal_skill_id = parse_text.parse_words_seq(lines[0], 'heal skill', 1)[0]
+    heal_skill_id = parseutil.parse_words_seq(lines[0], 'heal skill', 1)[0]
     utility_skill_ids = (
-        parse_text.parse_words_seq(lines[1], 'utility skills', 3))
-    elite_skill_id = parse_text.parse_words_seq(lines[2], 'elite skill', 1)[0]
+        parseutil.parse_words_seq(lines[1], 'utility skills', 3))
+    elite_skill_id = parseutil.parse_words_seq(lines[2], 'elite skill', 1)[0]
     return build.Skills(
         lookup_skill(heal_skill_id, build.SkillTypes.HEAL, meta, api_storage),
         [lookup_skill(s, build.SkillTypes.UTILITY, meta, api_storage)

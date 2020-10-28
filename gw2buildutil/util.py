@@ -40,3 +40,42 @@ class Identified:
     @staticmethod
     def normalise_id (id_):
         return str(id_).lower()
+
+
+def strip_empty_lines (lines, leading=True, trailing=True, inner=None):
+    in_leading = True
+    empty_count = 0
+
+    for line in lines:
+        if not line:
+            if not (leading and in_leading):
+                empty_count += 1
+
+        else:
+            if inner == 'all' and not in_leading:
+                pass
+            elif inner == 'collapse' and not in_leading:
+                if empty_count > 0:
+                    yield ''
+            else: # inner is None or in_leading
+                for i in range(empty_count):
+                    yield ''
+
+            empty_count = 0
+            in_leading = False
+            yield line
+
+    if not trailing:
+        for i in range(empty_count):
+            yield ''
+
+
+def group_paragraphs (lines):
+    paragraph = []
+    for line in lines:
+        if line:
+            paragraph.append(line)
+        else:
+            yield paragraph
+            paragraph = []
+    yield paragraph

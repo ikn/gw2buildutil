@@ -1,4 +1,5 @@
 import enum
+import abc
 
 from . import util
 
@@ -60,12 +61,8 @@ class BuildMetadata (util.Typed):
 
 
 class TextBody:
-    pass
-
-
-class MarkdownBody (TextBody):
-    def __init__ (self, text):
-        self.text = text
+    def __init__ (self, source):
+        self.source = source
 
 
 class WeaponType (util.Typed, util.Identified):
