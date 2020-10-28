@@ -3,6 +3,8 @@
 - `build`:
     - **breaking**: remove `MarkdownBody`
 - `textbody`: new module
+- `defnfile`:
+    - parse `usage` and `notes` sections
 
 # 0.3
 

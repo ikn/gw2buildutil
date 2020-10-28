@@ -1,6 +1,5 @@
-from ... import util
+from ... import build
 
 
 def parse (lines, meta, api_storage):
-    for line in util.strip_empty_lines(lines, inner='collapse'):
-        pass
+    return build.TextBody('\n'.join(lines))
