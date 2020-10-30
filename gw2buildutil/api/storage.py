@@ -135,10 +135,10 @@ class FileStorage (Storage):
         return (f'{entity_type.type_id()}:'
                 f'id:{util.Identified.normalise_id(id_)}')
 
-    def store (self, entity):
+    def _store (self, entity, ids):
         entity_type = type(entity)
 
-        for id_ in entity.ids:
+        for id_ in ids:
             id_key = self._id_key(entity_type, id_)
             if id_key in self._db:
                 data = json.loads(self._db[id_key])
@@ -146,6 +146,11 @@ class FileStorage (Storage):
                 data = []
             data.append(entity.api_id)
             self._db[id_key] = json.dumps(tuple(set(data)))
+
+    def store (self, entity):
+        self._store(entity, entity.ids)
+        for other_entity, extra_ids in entity.extra_entity_ids().items():
+            self._store(other_entity, extra_ids)
 
     def from_api_id (self, entity_type, api_id):
         return entity_type(self.raw(entity_type.path(), api_id), self, None)

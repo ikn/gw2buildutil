@@ -6,6 +6,9 @@
       (`TraitTypes`), `TraitChoices.from_api_id`
 - `api`:
     - add `entity.Trait`
+    - `entity.Entity`: add `extra_entity_ids` method for overriding
+    - `Skill` entities for engineer toolbelt skills are now indexed by IDs such
+      as `elixir h toolbelt` and `bk tb`
 - `textbody`: new module
 - `defnfile`:
     - parse `usage` and `notes` sections

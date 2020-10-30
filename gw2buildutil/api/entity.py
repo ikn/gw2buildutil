@@ -42,6 +42,9 @@ class Entity (abc.ABC, util.Typed, util.Identified):
     def path ():
         pass
 
+    def extra_entity_ids (self):
+        return {}
+
     @staticmethod
     def _filter_first_by_name (entities):
         # filter to entity with earliest API ID (for determinism), for each
@@ -222,6 +225,12 @@ class Skill (Entity):
         flags = result.get('flags', ())
         self.is_aquatic = 'NoUnderwater' not in flags
 
+        if 'toolbelt_skill' in result:
+            self.toolbelt_skill = _load_dep(
+                Skill, result['toolbelt_skill'], storage, crawler)
+        else:
+            self.toolbelt_skill = None
+
     @staticmethod
     def crawl_dependencies ():
         return set([Profession, Specialisation])
@@ -229,6 +238,16 @@ class Skill (Entity):
     @staticmethod
     def path ():
         return ('skills',)
+
+    def extra_entity_ids (self):
+        entities = {}
+        if self.toolbelt_skill is not None:
+            tb_ids = []
+            for suffix in ('toolbelt', 'tb'):
+                for prefix in self.ids:
+                    tb_ids.append(f'{prefix} {suffix}')
+            entities[self.toolbelt_skill] = tb_ids
+        return entities
 
     @staticmethod
     def _storage_build_id (profession, build_id):
