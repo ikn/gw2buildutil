@@ -7,8 +7,9 @@
 - `api`:
     - add `entity.Trait`
     - `entity.Entity`: add `extra_entity_ids` method for overriding
-    - `Skill` entities for engineer toolbelt skills are now indexed by IDs such
-      as `elixir h toolbelt` and `bk tb`
+    - `Skill` entities are now indexed by extra IDs:
+        - weapon skills, eg. `pistol 4`, `mesmer gs 3`
+        - engineer toolbelt skills, eg. `elixir h toolbelt`, `bk tb`
 - `textbody`: new module
 - `defnfile`:
     - parse `usage` and `notes` sections

@@ -72,11 +72,11 @@ class WeaponType (util.Typed, util.Identified):
 
 
 class WeaponTypes (enum.Enum):
-    GREATSWORD = WeaponType('greatsword', 2)
+    GREATSWORD = WeaponType(('greatsword', 'gs'), 2)
     HAMMER = WeaponType('hammer', 2)
-    LONGBOW = WeaponType('longbow', 2)
+    LONGBOW = WeaponType(('longbow', 'lb'), 2)
     RIFLE = WeaponType('rifle', 2)
-    SHORTBOW = WeaponType('shortbow', 2)
+    SHORTBOW = WeaponType(('shortbow', 'sb'), 2)
     STAFF = WeaponType('staff', 2)
 
     AXE = WeaponType('axe', 1)
@@ -88,7 +88,7 @@ class WeaponTypes (enum.Enum):
     FOCUS = WeaponType('focus', 1)
     SHIELD = WeaponType('shield', 1)
     TORCH = WeaponType('torch', 1)
-    WARHORN = WeaponType('warhorn', 1)
+    WARHORN = WeaponType(('warhorn', 'wh'), 1)
 
     # disallowed until aquatic weapons are properly supported
     #HARPOON = WeaponType(('harpoon', 'speargun'), 2)

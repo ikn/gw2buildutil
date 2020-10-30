@@ -188,17 +188,6 @@ class Skill (Entity):
             None if elite_spec_api_id is None
             else _load_dep(Specialisation, elite_spec_api_id, storage, crawler))
 
-        if self.type_ == build.SkillTypes.WEAPON:
-            try:
-                self.weapon_type = (
-                    build.WeaponTypes.from_id(result['weapon_type']))
-            except KeyError:
-                # probably a downed skill
-                self.type_ = None
-                self.weapon_type = None
-        else:
-            self.weapon_type = None
-
         self.build_id = None
         storage_build_id = None
         if len(self.professions) == 1:
@@ -206,6 +195,22 @@ class Skill (Entity):
             self.build_id = prof.skills_build_ids.get(api_id)
             if self.build_id is not None:
                 storage_build_id = Skill._storage_build_id(prof, self.build_id)
+
+        self.weapon_type = None
+        self.weapon_slot = None
+        if self.type_ == build.SkillTypes.WEAPON:
+            try:
+                self.weapon_type = (
+                    build.WeaponTypes.from_id(result['weapon_type']))
+            except KeyError:
+                # probably a downed skill
+                self.type_ = None
+            else:
+                if result['slot'].startswith('Weapon_'):
+                    try:
+                        self.weapon_slot = int(result['slot'][len('Weapon_'):])
+                    except TypeError:
+                        pass
 
         ids = [id_]
         if full_id != id_:
@@ -217,6 +222,14 @@ class Skill (Entity):
             ids.append(abbr)
             if full_id.endswith('!'):
                 ids.append(abbr + '!')
+
+        # numbered IDs for weapon skills
+        if self.weapon_slot is not None:
+            for weapon_type_id in self.weapon_type.value.ids:
+                ids.append(f'{weapon_type_id} {self.weapon_slot}')
+                if len(self.professions) == 1:
+                    ids.append(f'{next(iter(self.professions)).name} '
+                               f'{weapon_type_id} {self.weapon_slot}')
 
         Entity.__init__(self, api_id, ids)
 
