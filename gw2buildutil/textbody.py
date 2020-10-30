@@ -42,7 +42,7 @@ def _rst_register_api_role (entity_type, class_prefix, filters, api_storage):
 
     def role (name, raw_text, text, line_num, inliner, options={}, content=[]):
         try:
-            entity = api_storage.from_id(entity_type, text)
+            entity = api_storage.from_id(entity_type, text, filters)
         except KeyError:
             message = inliner.reporter.error(
                 f'unknown {type_id}: {text}')
@@ -83,7 +83,8 @@ def render_rst_html (text_body, build_meta, api_storage, class_prefix='gw2-'):
 
     for entity_type in api.entity.BUILTIN_TYPES:
         filters = (_rst_api_role_filters[entity_type](build_meta)
-                   if entity_type in _rst_api_role_filters else ())
+                   if entity_type in _rst_api_role_filters
+                   else api.storage.Filters())
         _rst_register_api_role(entity_type, class_prefix, filters, api_storage)
 
     settings = {
