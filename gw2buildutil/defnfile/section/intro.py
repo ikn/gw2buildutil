@@ -306,10 +306,10 @@ def parse_revenant_skills (lines, api_storage):
 
 def lookup_skill (id_, type_, meta, api_storage):
     S = api.entity.Skill
-    filters = S.filter_type(type_) + S.filter_profession(meta.profession)
-    if meta.elite_spec is not None:
-        filters += S.filter_elite_spec(meta.elite_spec)
-    filters += S.filter_has_build_id
+    filters = (S.filter_type(type_) +
+               S.filter_profession(meta.profession) +
+               S.filter_elite_spec(meta.elite_spec) +
+               S.filter_has_build_id)
 
     try:
         return api_storage.from_id(S, id_, filters)

@@ -19,7 +19,9 @@ class Filters:
         for filter_ in self._filters:
             if len(entities) <= 1:
                 break
-            entities = filter_(entities)
+            filtered_entities = filter_(entities)
+            if filtered_entities:
+                entities = filtered_entities
         return entities
 
 

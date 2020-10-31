@@ -196,6 +196,13 @@ class Skill (Entity):
             if self.build_id is not None:
                 storage_build_id = Skill._storage_build_id(prof, self.build_id)
 
+        self.profession_slot = None
+        if 'slot' in result and result['slot'].startswith('Profession_'):
+            try:
+                self.profession_slot = int(result['slot'][len('Profession_')])
+            except TypeError:
+                pass
+
         self.weapon_type = None
         self.weapon_slot = None
         if self.type_ == build.SkillTypes.WEAPON:
@@ -206,7 +213,7 @@ class Skill (Entity):
                 # probably a downed skill
                 self.type_ = None
             else:
-                if result['slot'].startswith('Weapon_'):
+                if 'slot' in result and result['slot'].startswith('Weapon_'):
                     try:
                         self.weapon_slot = int(result['slot'][len('Weapon_'):])
                     except TypeError:
@@ -223,13 +230,26 @@ class Skill (Entity):
             if full_id.endswith('!'):
                 ids.append(abbr + '!')
 
-        # numbered IDs for weapon skills
+        # numbered IDs for profession + weapon skills
+        if self.elite_spec is not None:
+            prof_ids = self.elite_spec.ids
+        elif len(self.professions) == 1:
+            prof_ids = next(iter(self.professions)).ids
+        else:
+            prof_ids = None
+        if self.profession_slot is not None:
+            for prefix in ('profession ', 'prof ', 'f'):
+                ids.append(f'{prefix}{self.profession_slot}')
+                if prof_ids is not None:
+                    for prof_id in prof_ids:
+                        ids.append(f'{prof_id} {prefix}{self.profession_slot}')
         if self.weapon_slot is not None:
             for weapon_type_id in self.weapon_type.value.ids:
                 ids.append(f'{weapon_type_id} {self.weapon_slot}')
-                if len(self.professions) == 1:
-                    ids.append(f'{next(iter(self.professions)).name} '
-                               f'{weapon_type_id} {self.weapon_slot}')
+                if prof_ids is not None:
+                    for prof_id in prof_ids:
+                        ids.append(f'{prof_id} '
+                                   f'{weapon_type_id} {self.weapon_slot}')
 
         Entity.__init__(self, api_id, ids)
 
@@ -283,11 +303,14 @@ class Skill (Entity):
 
     @staticmethod
     def filter_elite_spec (elite_spec):
-        return gw2storage.Filters((
-            lambda skills: [s for s in skills if (
-                s.elite_spec is None or s.elite_spec == elite_spec
-            )],
-        ))
+        def filter_ (skills):
+            core = [s for s in skills if s.elite_spec is None]
+            if elite_spec is None:
+                return core
+            matching = [s for s in skills if s.elite_spec == elite_spec]
+            return matching if matching else core
+
+        return gw2storage.Filters((filter_,))
 
     @staticmethod
     def filter_type (type_):

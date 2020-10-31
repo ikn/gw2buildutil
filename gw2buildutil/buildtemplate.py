@@ -207,7 +207,6 @@ def _render_skill (skill):
         elif skill.api_id in _SKILL_BUILD_IDS:
             build_id = _SKILL_BUILD_IDS[skill.api_id]
         else:
-            print(skill.api_id)
             raise ValueError('build cannot be rendered to a template code: '
                              f'skill has no build ID: {skill.name}')
     else:
