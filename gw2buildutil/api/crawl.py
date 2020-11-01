@@ -40,7 +40,7 @@ class Crawler:
             for entity_type in entity_types:
                 result = self.storage.raw(path, api_id)
                 try:
-                    entity = entity_type(result, self.storage, self)
+                    entity = entity_type(result, {}, self.storage, self)
                 except gw2entity.SkipEntityError:
                     pass
                 else:

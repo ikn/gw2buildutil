@@ -63,7 +63,8 @@ def _rst_register_api_role (entity_type, class_prefix, filters, api_storage):
 
 def _rst_skill_role_filters (build_meta):
     S = api.entity.Skill
-    return (S.filter_profession(build_meta.profession) +
+    return (S.filter_is_main +
+            S.filter_profession(build_meta.profession) +
             S.filter_elite_spec(build_meta.elite_spec) +
             S.filter_has_build_id)
 

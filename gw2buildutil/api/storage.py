@@ -69,7 +69,7 @@ class Storage (abc.ABC):
             return entities[0]
         elif entities:
             raise KeyError(f'not unique: {repr(id_)} - matches: '
-                           f'{", ".join(repr(e.id_) for e in entities)}')
+                           f'{", ".join(repr(e.id_) + repr(e.api_id) for e in entities)}')
         else:
             raise KeyError(id_)
 
@@ -137,25 +137,53 @@ class FileStorage (Storage):
         return (f'{entity_type.type_id()}:'
                 f'id:{util.Identified.normalise_id(id_)}')
 
-    def _store (self, entity, ids):
-        entity_type = type(entity)
-
+    def _store (self, entity_type, api_id, ids):
         for id_ in ids:
             id_key = self._id_key(entity_type, id_)
             if id_key in self._db:
                 data = json.loads(self._db[id_key])
             else:
                 data = []
-            data.append(entity.api_id)
+            data.append(api_id)
             self._db[id_key] = json.dumps(tuple(set(data)))
 
+    def _relations_key (self, entity_type, api_id):
+        return (f'{entity_type.type_id()}:relations:{api_id}')
+
+    def _store_relations (self, entity_type, api_id, dest_entity, ids):
+        relations_key = self._relations_key(entity_type, api_id)
+        dest_entity_ref = (type(dest_entity).path(), dest_entity.api_id)
+        if relations_key in self._db:
+            data = json.loads(self._db[relations_key])
+        else:
+            data = {}
+        for id_ in ids:
+            data.setdefault(id_, []).append(dest_entity_ref)
+        self._db[relations_key] = json.dumps(data)
+
     def store (self, entity):
-        self._store(entity, entity.ids)
-        for other_entity, extra_ids in entity.extra_entity_ids().items():
-            self._store(other_entity, extra_ids)
+        self._store(type(entity), entity.api_id, entity.ids)
+        for (other_type, other_api_id), extra_ids \
+            in entity.extra_entity_ids().items() \
+        :
+            self._store(other_type, other_api_id, extra_ids)
+
+        for (other_type, other_api_id), relation_ids \
+            in entity.extra_entity_relations().items() \
+        :
+            self._store_relations(
+                other_type, other_api_id, entity, relation_ids)
 
     def from_api_id (self, entity_type, api_id):
-        return entity_type(self.raw(entity_type.path(), api_id), self, None)
+        result = self.raw(entity_type.path(), api_id)
+
+        relations_key = self._relations_key(entity_type, api_id)
+        if relations_key in self._db:
+            relations = json.loads(self._db[relations_key])
+        else:
+            relations = {}
+
+        return entity_type(result, relations, self, None)
 
     def all_from_id (self, entity_type, id_):
         key = self._id_key(entity_type, id_)

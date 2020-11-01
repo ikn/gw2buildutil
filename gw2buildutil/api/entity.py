@@ -45,6 +45,9 @@ class Entity (abc.ABC, util.Typed, util.Identified):
     def extra_entity_ids (self):
         return {}
 
+    def extra_entity_relations (self):
+        return {}
+
     @staticmethod
     def _filter_first_by_name (entities):
         # filter to entity with earliest API ID (for determinism), for each
@@ -61,7 +64,7 @@ class Entity (abc.ABC, util.Typed, util.Identified):
 
 
 class Profession (Entity):
-    def __init__ (self, result, storage, crawler):
+    def __init__ (self, result, relations, storage, crawler):
         self.name = result['name']
         self.build_id = result['code']
         Entity.__init__(self, result['id'], (self.name, self.build_id))
@@ -111,7 +114,7 @@ class Profession (Entity):
 
 
 class Specialisation (Entity):
-    def __init__ (self, result, storage, crawler):
+    def __init__ (self, result, relations, storage, crawler):
         self.name = result['name']
         Entity.__init__(self, result['id'], self.name)
         self.profession = _load_dep(
@@ -128,7 +131,7 @@ class Specialisation (Entity):
 
 
 class Trait (Entity):
-    def __init__ (self, result, storage, crawler):
+    def __init__ (self, result, relations, storage, crawler):
         self.name = result['name']
         self.specialisation = _load_dep(
             Specialisation, result['specialization'], storage, crawler)
@@ -155,7 +158,7 @@ class Trait (Entity):
 
 
 class Skill (Entity):
-    def __init__ (self, result, storage, crawler):
+    def __init__ (self, result, relations, storage, crawler):
         api_id = result['id']
         self.name = result['name']
 
@@ -188,14 +191,48 @@ class Skill (Entity):
             None if elite_spec_api_id is None
             else _load_dep(Specialisation, elite_spec_api_id, storage, crawler))
 
+        ids = [full_id, id_]
+        if ' ' in id_:
+            abbr = ''.join(word[0] for word in id_.split(' ') if word)
+            ids.append(abbr)
+            if full_id.endswith('!'):
+                ids.append(abbr + '!')
+        ids += self._parse_build_id(api_id)
+        ids += self._parse_profession_skill(result)
+        ids += self._parse_weapon_skill(result)
+
+        Entity.__init__(self, api_id, ids)
+
+        self._flipover_api_id = result.get('flip_skill')
+        self.is_chained = 'prev_chain' in result
+        self.is_flipover = bool(relations.get('flipover', []))
+
+        flags = result.get('flags', ())
+        self.is_aquatic = 'NoUnderwater' not in flags
+
+        self._flipover_api_id = result.get('flip_skill')
+        self._toolbelt_skill_api_id = result.get('toolbelt_skill')
+
+    def _parse_build_id (self, api_id):
         self.build_id = None
-        storage_build_id = None
+        ids = []
         if len(self.professions) == 1:
             prof = next(iter(self.professions))
             self.build_id = prof.skills_build_ids.get(api_id)
             if self.build_id is not None:
                 storage_build_id = Skill._storage_build_id(prof, self.build_id)
+                ids = [storage_build_id]
+        return ids
 
+    def _profession_ids (self):
+        if self.elite_spec is not None:
+            return self.elite_spec.ids
+        elif len(self.professions) == 1:
+            return next(iter(self.professions)).ids
+        else:
+            return None
+
+    def _parse_profession_skill (self, result):
         self.profession_slot = None
         if 'slot' in result and result['slot'].startswith('Profession_'):
             try:
@@ -203,6 +240,17 @@ class Skill (Entity):
             except TypeError:
                 pass
 
+        prof_ids = self._profession_ids()
+        ids = []
+        if self.profession_slot is not None:
+            for prefix in ('profession ', 'prof ', 'f'):
+                ids.append(f'{prefix}{self.profession_slot}')
+                if prof_ids is not None:
+                    for prof_id in prof_ids:
+                        ids.append(f'{prof_id} {prefix}{self.profession_slot}')
+        return ids
+
+    def _parse_weapon_skill (self, result):
         self.weapon_type = None
         self.weapon_slot = None
         if self.type_ == build.SkillTypes.WEAPON:
@@ -219,30 +267,8 @@ class Skill (Entity):
                     except TypeError:
                         pass
 
-        ids = [id_]
-        if full_id != id_:
-            ids.append(full_id)
-        if storage_build_id is not None:
-            ids.append(storage_build_id)
-        if ' ' in id_:
-            abbr = ''.join(word[0] for word in id_.split(' ') if word)
-            ids.append(abbr)
-            if full_id.endswith('!'):
-                ids.append(abbr + '!')
-
-        # numbered IDs for profession + weapon skills
-        if self.elite_spec is not None:
-            prof_ids = self.elite_spec.ids
-        elif len(self.professions) == 1:
-            prof_ids = next(iter(self.professions)).ids
-        else:
-            prof_ids = None
-        if self.profession_slot is not None:
-            for prefix in ('profession ', 'prof ', 'f'):
-                ids.append(f'{prefix}{self.profession_slot}')
-                if prof_ids is not None:
-                    for prof_id in prof_ids:
-                        ids.append(f'{prof_id} {prefix}{self.profession_slot}')
+        prof_ids = self._profession_ids()
+        ids = []
         if self.weapon_slot is not None:
             for weapon_type_id in self.weapon_type.value.ids:
                 ids.append(f'{weapon_type_id} {self.weapon_slot}')
@@ -250,19 +276,7 @@ class Skill (Entity):
                     for prof_id in prof_ids:
                         ids.append(f'{prof_id} '
                                    f'{weapon_type_id} {self.weapon_slot}')
-
-        Entity.__init__(self, api_id, ids)
-
-        self.is_chained = 'prev_chain' in result
-
-        flags = result.get('flags', ())
-        self.is_aquatic = 'NoUnderwater' not in flags
-
-        if 'toolbelt_skill' in result:
-            self.toolbelt_skill = _load_dep(
-                Skill, result['toolbelt_skill'], storage, crawler)
-        else:
-            self.toolbelt_skill = None
+        return ids
 
     @staticmethod
     def crawl_dependencies ():
@@ -274,12 +288,18 @@ class Skill (Entity):
 
     def extra_entity_ids (self):
         entities = {}
-        if self.toolbelt_skill is not None:
+        if self._toolbelt_skill_api_id is not None:
             tb_ids = []
             for suffix in ('toolbelt', 'tb'):
                 for prefix in self.ids:
                     tb_ids.append(f'{prefix} {suffix}')
-            entities[self.toolbelt_skill] = tb_ids
+            entities[(Skill, self._toolbelt_skill_api_id)] = tb_ids
+        return entities
+
+    def extra_entity_relations (self):
+        entities = {}
+        if self._flipover_api_id is not None:
+            entities[(Skill, self._flipover_api_id)] = ['flipover']
         return entities
 
     @staticmethod
@@ -318,6 +338,11 @@ class Skill (Entity):
             lambda skills: [s for s in skills if s.type_ == type_],
         ))
 
+    filter_is_main = gw2storage.Filters((
+        lambda skills: [s for s in skills
+                        if not s.is_chained and not s.is_flipover],
+    ))
+
 
 # not obtainable through the API in any sensible way
 _legend_ids = {
@@ -331,7 +356,7 @@ _legend_ids = {
 }
 
 class RevenantLegend (Entity):
-    def __init__ (self, result, storage, crawler):
+    def __init__ (self, result, relations, storage, crawler):
         swap_skill = _load_dep(Skill, result['swap'], storage, crawler)
         self.name = swap_skill.name
         self.build_id = result['code']
@@ -363,7 +388,7 @@ class RevenantLegend (Entity):
 
 
 class RangerPet (Entity):
-    def __init__ (self, result, storage, crawler):
+    def __init__ (self, result, relations, storage, crawler):
         self.name = result['name']
 
         full_id = self.name.lower()
@@ -382,7 +407,7 @@ class RangerPet (Entity):
 
 
 class Stats (Entity):
-    def __init__ (self, result, storage, crawler):
+    def __init__ (self, result, relations, storage, crawler):
         self.name = result['name']
 
         full_id = self.name
@@ -411,7 +436,7 @@ class Stats (Entity):
 
 
 class PvpStats (Entity):
-    def __init__ (self, result, storage, crawler):
+    def __init__ (self, result, relations, storage, crawler):
         self.name = result['name']
 
         id_ = self.name.lower()
@@ -430,7 +455,7 @@ sigil_pattern = re.compile(r'^'
     r'$')
 
 class Sigil (Entity):
-    def __init__ (self, result, storage, crawler):
+    def __init__ (self, result, relations, storage, crawler):
         if result['type'] != 'UpgradeComponent':
             raise SkipEntityError()
         if result['details']['type'] != 'Sigil':
@@ -460,7 +485,7 @@ rune_pattern = re.compile(r'^'
     r'$')
 
 class Rune (Entity):
-    def __init__ (self, result, storage, crawler):
+    def __init__ (self, result, relations, storage, crawler):
         if result['type'] != 'UpgradeComponent':
             raise SkipEntityError()
         if result['details']['type'] != 'Rune':
@@ -491,7 +516,7 @@ food_prefixes = (
 )
 
 class Food (Entity):
-    def __init__ (self, result, storage, crawler):
+    def __init__ (self, result, relations, storage, crawler):
         if result['type'] != 'Consumable':
             raise SkipEntityError()
         if result['details']['type'] != 'Food':
@@ -515,7 +540,7 @@ class Food (Entity):
 
 
 class UtilityConsumable (Entity):
-    def __init__ (self, result, storage, crawler):
+    def __init__ (self, result, relations, storage, crawler):
         if result['type'] != 'Consumable':
             raise SkipEntityError()
         if result['details']['type'] != 'Utility':
