@@ -37,12 +37,14 @@ _rst_api_role_names = {
 }
 
 
-def _rst_register_api_role (entity_type, class_prefix, filters, api_storage):
+def _rst_register_api_role (
+    entity_type, class_prefix, lookup, build_meta, api_storage
+):
     type_id = entity_type.type_id()
 
     def role (name, raw_text, text, line_num, inliner, options={}, content=[]):
         try:
-            entity = api_storage.from_id(entity_type, text, filters)
+            entity = lookup(entity_type, text, build_meta, api_storage)
         except KeyError:
             message = inliner.reporter.error(
                 f'unknown {type_id}: {text}')
@@ -61,16 +63,32 @@ def _rst_register_api_role (entity_type, class_prefix, filters, api_storage):
         docutils.parsers.rst.roles.register_local_role(name, role)
 
 
-def _rst_skill_role_filters (build_meta):
+def _rst_default_role_lookup (entity_type, text, build_meta, api_storage):
+    return api_storage.from_id(entity_type, text, api.storage.Filters())
+
+
+def _rst_skill_role_lookup (entity_type, full_text, build_meta, api_storage):
+    words = full_text.split()
+    try:
+        prof, elite_spec = (
+            api.util.lookup_profession(words[0], api_storage))
+        text = ' '.join(words[1:])
+    except (IndexError, KeyError):
+        text = full_text
+        prof = build_meta.profession
+        elite_spec = build_meta.elite_spec
+
     S = api.entity.Skill
-    return (S.filter_is_main +
-            S.filter_profession(build_meta.profession) +
-            S.filter_elite_spec(build_meta.elite_spec) +
-            S.filter_has_build_id)
+    filters = (S.filter_is_main +
+               S.filter_profession(prof) +
+               S.filter_elite_spec(elite_spec) +
+               S.filter_has_build_id)
+
+    return api_storage.from_id(entity_type, text, filters)
 
 
-_rst_api_role_filters = {
-    api.entity.Skill: _rst_skill_role_filters,
+_rst_api_role_lookup = {
+    api.entity.Skill: _rst_skill_role_lookup,
 }
 
 
@@ -81,10 +99,9 @@ def render_rst_html (text_body, build_meta, api_storage, class_prefix='gw2-'):
                            'Docutils is not installed')
 
     for entity_type in api.entity.BUILTIN_TYPES:
-        filters = (_rst_api_role_filters[entity_type](build_meta)
-                   if entity_type in _rst_api_role_filters
-                   else api.storage.Filters())
-        _rst_register_api_role(entity_type, class_prefix, filters, api_storage)
+        lookup = _rst_api_role_lookup.get(entity_type, _rst_default_role_lookup)
+        _rst_register_api_role(entity_type, class_prefix,
+                               lookup, build_meta, api_storage)
 
     settings = {
         # throw instead of writing errors to the document (2 means warnings and

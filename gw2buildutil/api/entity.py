@@ -224,14 +224,6 @@ class Skill (Entity):
                 ids = [storage_build_id]
         return ids
 
-    def _profession_ids (self):
-        if self.elite_spec is not None:
-            return self.elite_spec.ids
-        elif len(self.professions) == 1:
-            return next(iter(self.professions)).ids
-        else:
-            return None
-
     def _parse_profession_skill (self, result):
         self.profession_slot = None
         if 'slot' in result and result['slot'].startswith('Profession_'):
@@ -240,14 +232,10 @@ class Skill (Entity):
             except TypeError:
                 pass
 
-        prof_ids = self._profession_ids()
         ids = []
         if self.profession_slot is not None:
             for prefix in ('profession ', 'prof ', 'f'):
                 ids.append(f'{prefix}{self.profession_slot}')
-                if prof_ids is not None:
-                    for prof_id in prof_ids:
-                        ids.append(f'{prof_id} {prefix}{self.profession_slot}')
         return ids
 
     def _parse_weapon_skill (self, result):
@@ -267,15 +255,10 @@ class Skill (Entity):
                     except TypeError:
                         pass
 
-        prof_ids = self._profession_ids()
         ids = []
         if self.weapon_slot is not None:
             for weapon_type_id in self.weapon_type.value.ids:
                 ids.append(f'{weapon_type_id} {self.weapon_slot}')
-                if prof_ids is not None:
-                    for prof_id in prof_ids:
-                        ids.append(f'{prof_id} '
-                                   f'{weapon_type_id} {self.weapon_slot}')
         return ids
 
     @staticmethod

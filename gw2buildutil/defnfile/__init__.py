@@ -26,22 +26,12 @@ def parse_title (title, api_storage):
     if game_mode is None:
         raise parseutil.ParseError('title doesn\'t start with a known '
                                    f'game modes identifier: {repr(title)}')
-
     try:
-        profession = api_storage.from_id(api.entity.Profession, fields['prof'])
+        profession, elite_spec = (
+            api.util.lookup_profession(fields['prof'], api_storage))
     except KeyError:
-        try:
-            elite_spec = api_storage.from_id(
-                api.entity.Specialisation, fields['prof'])
-        except KeyError:
-            elite_spec = None
-        if elite_spec is None or not elite_spec.is_elite:
-            raise parseutil.ParseError('title has a missing or incorrect '
-                                       f'profession identifier: {repr(title)}')
-        else:
-            profession = elite_spec.profession
-    else:
-        elite_spec = None
+        raise parseutil.ParseError('title has a missing or incorrect '
+                                   f'profession identifier: {repr(title)}')
 
     labels = [l.strip() for l in fields['labels'].split(',')]
     return build.BuildMetadata(game_mode, profession, elite_spec, labels)
