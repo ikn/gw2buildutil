@@ -255,10 +255,19 @@ class Skill (Entity):
                     except TypeError:
                         pass
 
+        base_ids = []
+        if 'attunement' in result:
+            attunement = result['attunement']
+            base_ids.append(f'{attunement} {self.weapon_slot}')
+            base_ids.append(f'{attunement[0]}{self.weapon_slot}')
+        else:
+            base_ids.append(self.weapon_slot)
+
         ids = []
         if self.weapon_slot is not None:
             for weapon_type_id in self.weapon_type.value.ids:
-                ids.append(f'{weapon_type_id} {self.weapon_slot}')
+                for base_id in base_ids:
+                    ids.append(f'{weapon_type_id} {base_id}')
         return ids
 
     @staticmethod
