@@ -55,7 +55,7 @@ class Storage (abc.ABC):
         pass
 
     @abc.abstractmethod
-    def from_api_id (self, entity_type, api_id):
+    def from_api_id (self, entity_type, api_id, crawler=None):
         pass
 
     @abc.abstractmethod
@@ -157,9 +157,13 @@ class FileStorage (Storage):
             data = json.loads(self._db[relations_key])
         else:
             data = {}
+        relations = {id_: set([(tuple(ref_path), ref_api_id)
+                               for ref_path, ref_api_id in refs])
+                     for id_, refs in data.items()}
         for id_ in ids:
-            data.setdefault(id_, []).append(dest_entity_ref)
-        self._db[relations_key] = json.dumps(data)
+            relations.setdefault(id_, set()).add(dest_entity_ref)
+        data_out = {id_: list(refs) for id_, refs in relations.items()}
+        self._db[relations_key] = json.dumps(data_out)
 
     def store (self, entity):
         self._store(type(entity), entity.api_id, entity.ids)
@@ -174,7 +178,7 @@ class FileStorage (Storage):
             self._store_relations(
                 other_type, other_api_id, entity, relation_ids)
 
-    def from_api_id (self, entity_type, api_id):
+    def from_api_id (self, entity_type, api_id, crawler=None):
         result = self.raw(entity_type.path(), api_id)
 
         relations_key = self._relations_key(entity_type, api_id)
@@ -183,7 +187,7 @@ class FileStorage (Storage):
         else:
             relations = {}
 
-        return entity_type(result, relations, self, None)
+        return entity_type(result, relations, self, crawler)
 
     def all_from_id (self, entity_type, id_):
         key = self._id_key(entity_type, id_)

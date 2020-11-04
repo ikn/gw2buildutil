@@ -45,6 +45,8 @@ class Entity (abc.ABC, util.Typed, util.Identified):
     def extra_entity_ids (self):
         return {}
 
+    # relations must not be chained, ie. rely on other relations existing
+    # id generation may rely on relations
     def extra_entity_relations (self):
         return {}
 
@@ -199,18 +201,18 @@ class Skill (Entity):
                 ids.append(abbr + '!')
         ids += self._parse_build_id(api_id)
         ids += self._parse_profession_skill(result)
-        ids += self._parse_weapon_skill(result)
+        ids += self._parse_weapon_skill(result, relations, storage, crawler)
 
         Entity.__init__(self, api_id, ids)
 
-        self._flipover_api_id = result.get('flip_skill')
         self.is_chained = 'prev_chain' in result
         self.is_flipover = bool(relations.get('flipover', []))
 
         flags = result.get('flags', ())
         self.is_aquatic = 'NoUnderwater' not in flags
 
-        self._flipover_api_id = result.get('flip_skill')
+        self._flipover_skill_api_id = result.get('flip_skill')
+        self._bundle_skills_api_ids = result.get('bundle_skills', [])
         self._toolbelt_skill_api_id = result.get('toolbelt_skill')
 
     def _parse_build_id (self, api_id):
@@ -238,9 +240,8 @@ class Skill (Entity):
                 ids.append(f'{prefix}{self.profession_slot}')
         return ids
 
-    def _parse_weapon_skill (self, result):
+    def _parse_weapon_skill (self, result, relations, storage, crawler):
         self.weapon_type = None
-        self.weapon_slot = None
         if self.type_ == build.SkillTypes.WEAPON:
             try:
                 self.weapon_type = (
@@ -248,12 +249,22 @@ class Skill (Entity):
             except KeyError:
                 # probably a downed skill
                 self.type_ = None
-            else:
-                if 'slot' in result and result['slot'].startswith('Weapon_'):
-                    try:
-                        self.weapon_slot = int(result['slot'][len('Weapon_'):])
-                    except TypeError:
-                        pass
+
+        self.weapon_slot = None
+        if 'slot' in result and result['slot'].startswith('Weapon_'):
+            try:
+                self.weapon_slot = int(result['slot'][len('Weapon_'):])
+            except TypeError:
+                pass
+
+        weapon_ids = []
+        if self.weapon_slot is not None:
+            if self.type_ == build.SkillTypes.WEAPON:
+                weapon_ids.extend(self.weapon_type.value.ids)
+            elif self.type_ == build.SkillTypes.BUNDLE:
+                for _, api_id in relations.get('bundle', []):
+                    bundle_skill = _load_dep(Skill, api_id, storage, crawler)
+                    weapon_ids.extend(bundle_skill.ids)
 
         base_ids = []
         if 'attunement' in result:
@@ -264,10 +275,9 @@ class Skill (Entity):
             base_ids.append(self.weapon_slot)
 
         ids = []
-        if self.weapon_slot is not None:
-            for weapon_type_id in self.weapon_type.value.ids:
-                for base_id in base_ids:
-                    ids.append(f'{weapon_type_id} {base_id}')
+        for weapon_id in weapon_ids:
+            for base_id in base_ids:
+                ids.append(f'{weapon_id} {base_id}')
         return ids
 
     @staticmethod
@@ -290,8 +300,10 @@ class Skill (Entity):
 
     def extra_entity_relations (self):
         entities = {}
-        if self._flipover_api_id is not None:
-            entities[(Skill, self._flipover_api_id)] = ['flipover']
+        if self._flipover_skill_api_id is not None:
+            entities[(Skill, self._flipover_skill_api_id)] = ['flipover']
+        for bundle_skill_api_id in self._bundle_skills_api_ids:
+            entities[(Skill, bundle_skill_api_id)] = ['bundle']
         return entities
 
     @staticmethod

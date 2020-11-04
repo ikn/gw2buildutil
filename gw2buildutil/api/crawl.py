@@ -35,12 +35,11 @@ class Crawler:
         for result in self.client.get(path, new_api_ids):
             self.storage.store_raw(path, result)
 
-    def _process (self, path, api_ids, entity_types):
+    def _process (self, api_ids, entity_types):
         for api_id in api_ids:
             for entity_type in entity_types:
-                result = self.storage.raw(path, api_id)
                 try:
-                    entity = entity_type(result, {}, self.storage, self)
+                    entity = self.storage.from_api_id(entity_type, api_id, self)
                 except gw2entity.SkipEntityError:
                     pass
                 else:
@@ -49,7 +48,7 @@ class Crawler:
     def crawl (self, entity_type, api_ids):
         path = entity_type.path()
         self._crawl(path, api_ids)
-        self._process(path, api_ids, (entity_type,))
+        self._process(api_ids, (entity_type,))
 
     def crawl_all (self, entity_types):
         by_path = {}
@@ -60,12 +59,20 @@ class Crawler:
         ordered_grouped = sorted(by_path.values(),
                                  key=lambda group: ordered.index(group[0]))
 
+        api_ids_by_path = {}
         for group in ordered_grouped:
             path = group[0].path()
             logger.info(f'list /{"/".join(path)}')
             api_ids = self.client.list_(path)
+            api_ids_by_path[path] = api_ids
             self._crawl(path, api_ids)
-            self._process(path, api_ids, group)
+            self._process(api_ids, group)
+        # now relations should all exist, we process again so that id generation
+        # can use relations
+        for group in ordered_grouped:
+            path = group[0].path()
+            api_ids = api_ids_by_path[path]
+            self._process(api_ids, group)
 
 
 def crawl (client=gw2client.Client(),
