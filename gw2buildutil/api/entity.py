@@ -187,6 +187,10 @@ class Skill (Entity):
         for prof_api_id in prof_api_ids:
             self.professions.add(
                 _load_dep(Profession, prof_api_id, storage, crawler))
+        if len(self.professions) == 1:
+            self.profession = next(iter(self.professions))
+        else:
+            self.profession = None
 
         elite_spec_api_id = result.get('specialization')
         self.elite_spec = (
@@ -218,11 +222,11 @@ class Skill (Entity):
     def _parse_build_id (self, api_id):
         self.build_id = None
         ids = []
-        if len(self.professions) == 1:
-            prof = next(iter(self.professions))
-            self.build_id = prof.skills_build_ids.get(api_id)
+        if self.profession is not None:
+            self.build_id = self.profession.skills_build_ids.get(api_id)
             if self.build_id is not None:
-                storage_build_id = Skill._storage_build_id(prof, self.build_id)
+                storage_build_id = Skill._storage_build_id(
+                    self.profession, self.build_id)
                 ids = [storage_build_id]
         return ids
 
@@ -271,6 +275,12 @@ class Skill (Entity):
             attunement = result['attunement']
             base_ids.append(f'{attunement} {self.weapon_slot}')
             base_ids.append(f'{attunement[0]}{self.weapon_slot}')
+        elif (result['description'].startswith('Ambush.') and
+              self.elite_spec is not None and
+              self.elite_spec.id_ == 'mirage' and
+              self.type_ == build.SkillTypes.WEAPON
+        ):
+            base_ids.append('ambush')
         else:
             base_ids.append(self.weapon_slot)
 

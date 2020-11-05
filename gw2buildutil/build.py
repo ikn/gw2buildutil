@@ -653,9 +653,7 @@ class Skills (util.Typed):
             if skill is None:
                 continue
 
-            if (len(skill.professions) != 1 or
-                next(iter(skill.professions)) != profession
-            ):
+            if skill.profession is not None and skill.profession != profession:
                 raise BuildError(f'not a skill for {profession.name}: '
                                  f'{skill.name}')
 

@@ -9,10 +9,10 @@
     - `entity.Entity`: add `extra_entity_ids` method for overriding
     - `Skill` entities are now indexed by extra IDs:
         - weapon skills, eg. `pistol 4`, `mesmer gs 3`, `dagger earth 5`,
-          `elixir gun 4`
+          `elixir gun 4`, `staff ambush`
         - profession skills, eg. `f3`, `scrapper f5`
         - engineer toolbelt skills, eg. `elixir h toolbelt`, `bk tb`
-    - `entity.Skill`: add `is_flipover`, `filter_is_main`
+    - `entity.Skill`: add `is_flipover`, `filter_is_main`, `profession`
 - `textbody`: new module
 - `defnfile`:
     - parse `usage` and `notes` sections
