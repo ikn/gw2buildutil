@@ -281,6 +281,19 @@ class Skill (Entity):
               self.type_ == build.SkillTypes.WEAPON
         ):
             base_ids.append('ambush')
+        elif (result['description'].startswith('Stealth Attack.') and
+              self.profession is not None and
+              self.profession.id_ == 'thief' and
+              self.type_ == build.SkillTypes.WEAPON
+        ):
+            base_ids.append('stealth')
+            base_ids.append('stealth attack')
+        elif ('dual_wield' in result and
+              result['dual_wield'].lower() not in ('none', 'nothing')
+        ):
+            off_weapon_type = build.WeaponTypes.from_id(result['dual_wield'])
+            for off_weapon_id in off_weapon_type.value.ids:
+                base_ids.append(f'{off_weapon_id} 3')
         else:
             base_ids.append(self.weapon_slot)
 
