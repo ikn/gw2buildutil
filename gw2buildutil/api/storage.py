@@ -167,10 +167,6 @@ class FileStorage (Storage):
 
     def store (self, entity):
         self._store(type(entity), entity.api_id, entity.ids)
-        for (other_type, other_api_id), extra_ids \
-            in entity.extra_entity_ids().items() \
-        :
-            self._store(other_type, other_api_id, extra_ids)
 
         for (other_type, other_api_id), relation_ids \
             in entity.extra_entity_relations().items() \

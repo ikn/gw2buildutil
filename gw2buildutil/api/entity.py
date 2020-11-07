@@ -50,9 +50,6 @@ class Entity (abc.ABC, util.Typed, util.Identified):
     def path ():
         pass
 
-    def extra_entity_ids (self):
-        return {}
-
     # relations must not be chained, ie. rely on other relations existing
     # id generation may rely on relations
     def extra_entity_relations (self):
@@ -214,7 +211,8 @@ class Skill (Entity):
         ids += self._parse_build_id(api_id)
         ids += self._parse_profession_skill(result)
         ids += self._parse_weapon_skill(result, relations, storage, crawler)
-        ids += self._parse_legend_skill(result, relations, storage, crawler)
+        ids += self._parse_legend_skill(relations, storage, crawler)
+        ids += self._parse_toolbelt_skill(relations, storage, crawler)
 
         Entity.__init__(self, api_id, ids)
 
@@ -310,7 +308,7 @@ class Skill (Entity):
                 ids.append(f'{weapon_id} {base_id}')
         return ids
 
-    def _parse_legend_skill (self, result, relations, storage, crawler):
+    def _parse_legend_skill (self, relations, storage, crawler):
         ids = []
 
         if ('legend' in relations and
@@ -321,6 +319,19 @@ class Skill (Entity):
             for legend_id in legend_skill.ids:
                 for type_id in self.type_.value.ids:
                     ids.append(f'{legend_id} {type_id}')
+
+        return ids
+
+    def _parse_toolbelt_skill (self, relations, storage, crawler):
+        ids = []
+
+        if 'toolbelt' in relations:
+            main_skill = _load_dep(
+                Skill, relations['toolbelt'][0][1], storage, crawler)
+            for main_skill_id in main_skill.ids:
+                for suffix in ('toolbelt', 'tb'):
+                    ids.append(f'{main_skill_id} {suffix}')
+
         return ids
 
     @staticmethod
@@ -340,22 +351,14 @@ class Skill (Entity):
     def path ():
         return ('skills',)
 
-    def extra_entity_ids (self):
-        entities = {}
-        if self._toolbelt_skill_api_id is not None:
-            tb_ids = []
-            for suffix in ('toolbelt', 'tb'):
-                for prefix in self.ids:
-                    tb_ids.append(f'{prefix} {suffix}')
-            entities[(Skill, self._toolbelt_skill_api_id)] = tb_ids
-        return entities
-
     def extra_entity_relations (self):
         entities = {}
         if self._flipover_skill_api_id is not None:
             entities[(Skill, self._flipover_skill_api_id)] = ['flipover']
         for bundle_skill_api_id in self._bundle_skills_api_ids:
             entities[(Skill, bundle_skill_api_id)] = ['bundle']
+        if self._toolbelt_skill_api_id is not None:
+            entities[(Skill, self._toolbelt_skill_api_id)] = ['toolbelt']
         return entities
 
     @staticmethod
