@@ -45,9 +45,12 @@ class Crawler:
                 else:
                     self.storage.store(entity)
 
-    def crawl (self, entity_type, api_ids):
+    def crawl_raw (self, entity_type, api_ids):
         path = entity_type.path()
         self._crawl(path, api_ids)
+
+    def crawl (self, entity_type, api_ids):
+        self.crawl_raw(entity_type, api_ids)
         self._process(api_ids, (entity_type,))
 
     def crawl_all (self, entity_types):
@@ -67,7 +70,7 @@ class Crawler:
             api_ids_by_path[path] = api_ids
             self._crawl(path, api_ids)
             self._process(api_ids, group)
-        # now relations should all exist, we process again so that id generation
+        # now relations should all exist, we process again so that ID generation
         # can use relations
         for group in ordered_grouped:
             path = group[0].path()
