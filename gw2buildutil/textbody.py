@@ -68,23 +68,21 @@ def _rst_default_role_lookup (entity_type, text, build_meta, api_storage):
 
 
 def _rst_skill_role_lookup (entity_type, full_text, build_meta, api_storage):
+    def lookup (text, prof, elite_spec):
+        S = api.entity.Skill
+        filters = (S.filter_is_main +
+                S.filter_profession(prof) +
+                S.filter_elite_spec(elite_spec) +
+                S.filter_has_build_id)
+        return api_storage.from_id(entity_type, text, filters)
+
     words = full_text.split()
     try:
         prof, elite_spec = (
             api.util.lookup_profession(words[0], api_storage))
-        text = ' '.join(words[1:])
+        return lookup(' '.join(words[1:]), prof, elite_spec)
     except (IndexError, KeyError):
-        text = full_text
-        prof = build_meta.profession
-        elite_spec = build_meta.elite_spec
-
-    S = api.entity.Skill
-    filters = (S.filter_is_main +
-               S.filter_profession(prof) +
-               S.filter_elite_spec(elite_spec) +
-               S.filter_has_build_id)
-
-    return api_storage.from_id(entity_type, text, filters)
+        return lookup(full_text, build_meta.profession, build_meta.elite_spec)
 
 
 _rst_api_role_lookup = {
