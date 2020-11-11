@@ -22,10 +22,10 @@ def _dependency_order (entity_types):
 class Crawler:
     def __init__ (self, client, storage, entity_types):
         self.client = client
-        self.storage = storage
+        self.storage = gw2storage.CrawlingStorage(storage, self)
         self.entity_types = entity_types
 
-    def _crawl (self, path, api_ids):
+    def crawl_raw (self, path, api_ids):
         new_api_ids = [api_id for api_id in api_ids
                        if not self.storage.exists_raw(path, api_id)]
         if not new_api_ids:
@@ -44,10 +44,6 @@ class Crawler:
                     pass
                 else:
                     self.storage.store(entity)
-
-    def crawl_raw (self, entity_type, api_ids):
-        path = entity_type.path()
-        self._crawl(path, api_ids)
 
     def crawl (self, entity_type, api_ids):
         self.crawl_raw(entity_type, api_ids)
@@ -68,7 +64,7 @@ class Crawler:
             logger.info(f'list /{"/".join(path)}')
             api_ids = self.client.list_(path)
             api_ids_by_path[path] = api_ids
-            self._crawl(path, api_ids)
+            self.crawl_raw(path, api_ids)
             self._process(api_ids, group)
         # now relations should all exist, we process again so that ID generation
         # can use relations

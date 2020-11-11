@@ -7,19 +7,6 @@ from .. import build, util
 from . import storage as gw2storage
 
 
-def _load_dep (entity_type, api_id, storage, crawler):
-    if crawler is not None:
-        crawler.crawl(entity_type, (api_id,))
-    return storage.from_api_id(entity_type, api_id)
-
-
-# should be preferred to _load_dep where possible
-def _load_dep_raw (entity_type, api_id, storage, crawler):
-    if crawler is not None:
-        crawler.crawl_raw(entity_type, (api_id,))
-    return storage.raw(entity_type.path(), api_id)
-
-
 class SkipEntityError (ValueError):
     pass
 
@@ -27,6 +14,8 @@ class SkipEntityError (ValueError):
 class Entity (abc.ABC, util.Typed, util.Identified):
     # subclass constructors take arguments (result, storage, crawler)
     # raise SkipEntityError to skip
+    # when loading a dependency, should prefer Storage.raw to
+    # Storage.from_api_id where possible
     def __init__ (self, api_id, ids):
         util.Identified.__init__(self, ids)
         self.api_id = api_id
@@ -124,8 +113,7 @@ class Specialisation (Entity):
     def __init__ (self, result, relations, storage, crawler):
         self.name = result['name']
         Entity.__init__(self, result['id'], self.name)
-        self.profession = _load_dep(
-            Profession, result['profession'], storage, crawler)
+        self.profession = storage.from_api_id(Profession, result['profession'])
         self.is_elite = result['elite']
 
     @staticmethod
@@ -140,8 +128,8 @@ class Specialisation (Entity):
 class Trait (Entity):
     def __init__ (self, result, relations, storage, crawler):
         self.name = result['name']
-        self.specialisation = _load_dep(
-            Specialisation, result['specialization'], storage, crawler)
+        self.specialisation = storage.from_api_id(
+            Specialisation, result['specialization'])
         self.tier = build.TraitTiers.from_api_id(result['tier'])
         self.type_ = build.TraitTypes.from_api_id(result['slot'])
         self.choice = (None if self.type_ == build.TraitTypes.MINOR
@@ -190,8 +178,7 @@ class Skill (Entity):
         prof_api_ids = result.get('professions', ())
         self.professions = set()
         for prof_api_id in prof_api_ids:
-            self.professions.add(
-                _load_dep(Profession, prof_api_id, storage, crawler))
+            self.professions.add(storage.from_api_id(Profession, prof_api_id))
         if len(self.professions) == 1:
             self.profession = next(iter(self.professions))
         else:
@@ -200,7 +187,7 @@ class Skill (Entity):
         elite_spec_api_id = result.get('specialization')
         self.elite_spec = (
             None if elite_spec_api_id is None
-            else _load_dep(Specialisation, elite_spec_api_id, storage, crawler))
+            else storage.from_api_id(Specialisation, elite_spec_api_id))
 
         ids = [full_id, id_]
         if ' ' in id_:
@@ -217,7 +204,7 @@ class Skill (Entity):
         Entity.__init__(self, api_id, ids)
 
         self.is_chained = 'prev_chain' in result
-        self.is_flipover = bool(relations.get('flipover', []))
+        self.is_flipover = relations.matching('flipover', Skill) is not None
         self.is_aquatic = Skill._is_aquatic_from_result(result)
 
         self._flipover_skill_api_id = result.get('flip_skill')
@@ -271,8 +258,9 @@ class Skill (Entity):
             if self.type_ == build.SkillTypes.WEAPON:
                 weapon_ids.extend(self.weapon_type.value.ids)
             elif self.type_ == build.SkillTypes.BUNDLE:
-                for _, api_id in relations.get('bundle', []):
-                    bundle_skill = _load_dep(Skill, api_id, storage, crawler)
+                for bundle_skill in relations.entities(
+                    'bundle', Skill, storage, crawler
+                ):
                     weapon_ids.extend(bundle_skill.ids)
 
         base_ids = []
@@ -311,23 +299,21 @@ class Skill (Entity):
     def _parse_legend_skill (self, relations, storage, crawler):
         ids = []
 
-        if ('legend' in relations and
-            self.type_ in (build.SkillTypes.HEAL, build.SkillTypes.ELITE)
-        ):
-            legend_skill = _load_dep(
-                RevenantLegend, relations['legend'][0][1], storage, crawler)
-            for legend_id in legend_skill.ids:
-                for type_id in self.type_.value.ids:
-                    ids.append(f'{legend_id} {type_id}')
+        if self.type_ in (build.SkillTypes.HEAL, build.SkillTypes.ELITE):
+            legend_skill = relations.entity(
+                'legend', RevenantLegend, storage, crawler)
+            if legend_skill is not None:
+                for legend_id in legend_skill.ids:
+                    for type_id in self.type_.value.ids:
+                        ids.append(f'{legend_id} {type_id}')
 
         return ids
 
     def _parse_toolbelt_skill (self, relations, storage, crawler):
         ids = []
 
-        if 'toolbelt' in relations:
-            main_skill = _load_dep(
-                Skill, relations['toolbelt'][0][1], storage, crawler)
+        main_skill = relations.entity('toolbelt', Skill, storage, crawler)
+        if main_skill is not None:
             for main_skill_id in main_skill.ids:
                 for suffix in ('toolbelt', 'tb'):
                     ids.append(f'{main_skill_id} {suffix}')
@@ -416,8 +402,8 @@ _legend_ids = {
 
 class RevenantLegend (Entity):
     def __init__ (self, result, relations, storage, crawler):
-        self.name = Skill._name_from_result(_load_dep_raw(
-            Skill, result['swap'], storage, crawler))
+        self.name = Skill._name_from_result(
+            storage.raw(Skill.path(), result['swap']))
         self.build_id = result['code']
 
         api_id = result['id']
@@ -435,8 +421,8 @@ class RevenantLegend (Entity):
         self._heal_skill_api_id = result['heal']
         self._utility_skill_api_ids = result['utilities']
         self._elite_skill_api_id = result['elite']
-        self.is_aquatic = Skill._is_aquatic_from_result(_load_dep_raw(
-            Skill, self._heal_skill_api_id, storage, crawler))
+        self.is_aquatic = Skill._is_aquatic_from_result(
+            storage.raw(Skill.path(), self._heal_skill_api_id))
 
     @staticmethod
     def crawl_dependencies ():
@@ -453,14 +439,14 @@ class RevenantLegend (Entity):
         return {(Skill, api_id): ['legend'] for api_id in api_ids}
 
     def heal_skill (self, storage):
-        return _load_dep(Skill, self._heal_skill_api_id, storage, None)
+        return storage.from_api_id(Skill, self._heal_skill_api_id)
 
     def utility_skills (self, storage):
-        return [_load_dep(Skill, api_id, storage, None)
+        return [storage.from_api_id(Skill, api_id)
                 for api_id in self._utility_skill_api_ids]
 
     def elite_skill (self, storage):
-        return _load_dep(Skill, self._elite_skill_api_id, storage, None)
+        return storage.from_api_id(Skill, self._elite_skill_api_id)
 
 
 class RangerPet (Entity):

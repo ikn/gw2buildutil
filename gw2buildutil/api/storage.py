@@ -25,6 +25,53 @@ class Filters:
         return entities
 
 
+class Relation:
+    def __init__ (self, entity_type_id, api_id):
+        self.entity_type_id = entity_type_id
+        self.api_id = api_id
+
+    def entity_raw (self, entity_type, storage):
+        return storage.raw(entity_type.path(), self.api_id)
+
+    def entity (self, entity_type, storage, crawler=None):
+        return storage.from_api_id(entity_type, self.api_id, crawler)
+
+
+class Relations:
+    def __init__ (self, relations):
+        self._relations = relations
+
+    def all_matching (self, name, entity_type):
+        expect_type_id = entity_type.type_id()
+        for relation in self._relations.get(name, ()):
+            if relation.entity_type_id == expect_type_id:
+                yield relation
+
+    def matching (self, name, entity_type):
+        try:
+            return next(self.all_matching(name, entity_type))
+        except StopIteration:
+            return None
+
+    def entities_raw (self, name, entity_type, storage):
+        for relation in self.all_matching(name, entity_type):
+            yield relation.entity_raw(entity_type, storage)
+
+    def entity_raw (self, name, entity_type, storage):
+        relation = self.matching(name, entity_type)
+        if relation is not None:
+            return relation.entity_raw(entity_type, storage)
+
+    def entities (self, name, entity_type, storage, crawler=None):
+        for relation in self.all_matching(name, entity_type):
+            yield relation.entity(entity_type, storage, crawler)
+
+    def entity (self, name, entity_type, storage, crawler=None):
+        relation = self.matching(name, entity_type)
+        if relation is not None:
+            return relation.entity(entity_type, storage, crawler)
+
+
 class Storage (abc.ABC):
     @abc.abstractmethod
     def store_schema_version (self, version):
@@ -55,8 +102,13 @@ class Storage (abc.ABC):
         pass
 
     @abc.abstractmethod
-    def from_api_id (self, entity_type, api_id, crawler=None):
+    def relations (self, entity_type, api_id):
         pass
+
+    def from_api_id (self, entity_type, api_id, crawler=None):
+        result = self.raw(entity_type.path(), api_id)
+        relations = self.relations(entity_type, api_id)
+        return entity_type(result, relations, self, crawler)
 
     @abc.abstractmethod
     def all_from_id (self, entity_type, id_):
@@ -152,13 +204,13 @@ class FileStorage (Storage):
 
     def _store_relations (self, entity_type, api_id, dest_entity, ids):
         relations_key = self._relations_key(entity_type, api_id)
-        dest_entity_ref = (type(dest_entity).path(), dest_entity.api_id)
+        dest_entity_ref = (type(dest_entity).type_id(), dest_entity.api_id)
         if relations_key in self._db:
             data = json.loads(self._db[relations_key])
         else:
             data = {}
-        relations = {id_: set([(tuple(ref_path), ref_api_id)
-                               for ref_path, ref_api_id in refs])
+        relations = {id_: set([(tuple(e_type_id), ref_api_id)
+                               for e_type_id, ref_api_id in refs])
                      for id_, refs in data.items()}
         for id_ in ids:
             relations.setdefault(id_, set()).add(dest_entity_ref)
@@ -174,16 +226,15 @@ class FileStorage (Storage):
             self._store_relations(
                 other_type, other_api_id, entity, relation_ids)
 
-    def from_api_id (self, entity_type, api_id, crawler=None):
-        result = self.raw(entity_type.path(), api_id)
-
+    def relations (self, entity_type, api_id):
         relations_key = self._relations_key(entity_type, api_id)
         if relations_key in self._db:
-            relations = json.loads(self._db[relations_key])
+            relations_data = json.loads(self._db[relations_key])
         else:
-            relations = {}
-
-        return entity_type(result, relations, self, crawler)
+            relations_data = {}
+        return Relations({
+            name: [Relation(e_type_id, api_id) for (e_type_id, api_id) in rs]
+            for name, rs in relations_data.items()})
 
     def all_from_id (self, entity_type, id_):
         key = self._id_key(entity_type, id_)
@@ -193,3 +244,40 @@ class FileStorage (Storage):
     def clear (self):
         for key in self._db.keys():
             del self._db[key]
+
+
+class CrawlingStorage (Storage):
+    def __init__ (self, storage, crawler):
+        self._storage = storage
+        self._crawler = crawler
+
+    def store_schema_version (self, version):
+        self._storage.store_schema_version(version)
+
+    def schema_version (self):
+        return self._storage.schema_version()
+
+    def store_raw (self, path, result):
+        self._storage.store_raw(path, result)
+
+    def exists_raw (self, path, api_id):
+        return self._storage.exists_raw(path, api_id)
+
+    def raw (self, path, api_id):
+        self._crawler.crawl_raw(path, (api_id,))
+        return self._storage.raw(path, api_id)
+
+    def clear_raw (self):
+        self._storage.clear_raw()
+
+    def store (self, entity):
+        self._storage.store(entity)
+
+    def relations (self, entity_type, api_id):
+        return self._storage.relations(entity_type, api_id)
+
+    def all_from_id (self, entity_type, id_):
+        return self._storage.all_from_id(entity_type, id_)
+
+    def clear (self):
+        self._storage.clear()
