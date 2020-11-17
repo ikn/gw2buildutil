@@ -59,11 +59,23 @@ class Entity (abc.ABC, util.Typed, util.Identified):
     ))
 
 
+_prof_ids = {
+    'guardian': ('guard',),
+    'revenant': ('rev',),
+    'warrior': ('war',),
+    'engineer': ('engi',),
+    'elementalist': ('ele',),
+    'mesmer': ('mes',),
+    'necromancer': ('necro',),
+}
 class Profession (Entity):
     def __init__ (self, result, relations, storage, crawler):
         self.name = result['name']
         self.build_id = result['code']
-        Entity.__init__(self, result['id'], (self.name, self.build_id))
+        ids = [self.name, self.build_id]
+        ids.extend(_prof_ids.get(self.name.lower(), ()))
+
+        Entity.__init__(self, result['id'], ids)
 
         self.skills_build_ids = {
             api_id: build_id
@@ -109,10 +121,24 @@ class Profession (Entity):
         return True
 
 
+_spec_ids = {
+    'dragonhunter': ('dh',),
+    'firebrand': ('fb',),
+    'spellbreaker': ('spb',),
+    'renegade': ('ren', 'rene'),
+    'holosmith': ('holo',),
+    'soulbeast': ('slb',),
+    'daredevil': ('dd',),
+    'deadeye': ('de',),
+    'chronomancer': ('chrono',),
+}
 class Specialisation (Entity):
     def __init__ (self, result, relations, storage, crawler):
         self.name = result['name']
-        Entity.__init__(self, result['id'], self.name)
+        ids = [self.name]
+        ids.extend(_spec_ids.get(self.name.lower(), ()))
+
+        Entity.__init__(self, result['id'], ids)
         self.profession = storage.from_api_id(Profession, result['profession'])
         self.is_elite = result['elite']
 

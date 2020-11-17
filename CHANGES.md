@@ -14,6 +14,8 @@
         - engineer toolbelt skills, eg. `elixir h toolbelt`, `bk tb`
         - legend skills, eg. `assassin heal`, `jalis elite`
     - `entity.Skill`: add `is_flipover`, `filter_is_main`, `profession`
+    - `Profession` and `Specialisation` entities are now indexed by abbreviated
+      IDs, eg. `necro`, `holo`
     - **breaking**: change `entity.RevenantLegend` attributes to methods:
       `heal_skill`, `utility_skills`, `elite_skill`
 - `textbody`: new module
