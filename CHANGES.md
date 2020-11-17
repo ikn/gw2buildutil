@@ -16,8 +16,14 @@
     - `entity.Skill`: add `is_flipover`, `filter_is_main`, `profession`
     - `Profession` and `Specialisation` entities are now indexed by abbreviated
       IDs, eg. `necro`, `holo`
+    - `storage.Storage.from_id` can now be called with multiple entity types
     - **breaking**: change `entity.RevenantLegend` attributes to methods:
       `heal_skill`, `utility_skills`, `elite_skill`
+    - **breaking**: move `Filters` from `storage` to `util`, and change
+      constructor to require instances of the new `util.Filter` class
+    - **breaking**: some entity filters are now static methods instead of class
+      attributes: `Skill.filter_has_build_id`, `Skill.filter_is_main`,
+      `Stats.filter_endgame`, `Stats.filter_not_mixed`
 - `textbody`: new module
 - `defnfile`:
     - parse `usage` and `notes` sections

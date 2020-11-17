@@ -309,7 +309,7 @@ def lookup_skill (id_, type_, meta, api_storage):
     filters = (S.filter_type(type_) +
                S.filter_profession(meta.profession) +
                S.filter_elite_spec(meta.elite_spec) +
-               S.filter_has_build_id)
+               S.filter_has_build_id())
 
     try:
         return api_storage.from_id(S, id_, filters)

@@ -2,22 +2,22 @@ import abc
 import inspect
 import re
 
-from .. import build, util
+from .. import build, util as gw2util
 
-from . import storage as gw2storage
+from . import util
 
 
 class SkipEntityError (ValueError):
     pass
 
 
-class Entity (abc.ABC, util.Typed, util.Identified):
+class Entity (abc.ABC, gw2util.Typed, gw2util.Identified):
     # subclass constructors take arguments (result, storage, crawler)
     # raise SkipEntityError to skip
     # when loading a dependency, should prefer Storage.raw to
     # Storage.from_api_id where possible
     def __init__ (self, api_id, ids):
-        util.Identified.__init__(self, ids)
+        gw2util.Identified.__init__(self, ids)
         self.api_id = api_id
 
     def _value (self):
@@ -47,16 +47,16 @@ class Entity (abc.ABC, util.Typed, util.Identified):
     @staticmethod
     def _filter_first_by_name (entities):
         # filter to entity with earliest API ID (for determinism), for each
-        # unique name
+        # unique type and name
         by_name = {}
         for e in entities:
-            by_name.setdefault(e.name, []).append(e)
+            by_name.setdefault((type(e), e.name), []).append(e)
         return [sorted(group, key=lambda e: e.api_id)[0]
                 for group in by_name.values()]
 
-    default_filters = gw2storage.Filters((
-        lambda entities: Entity._filter_first_by_name(entities),
-    ))
+    DEFAULT_FILTERS = util.Filters([util.Filter(
+        lambda entities: Entity._filter_first_by_name(entities)
+    )])
 
 
 _prof_ids = {
@@ -382,15 +382,17 @@ class Skill (Entity):
         storage_build_id = Skill._storage_build_id(profession, build_id)
         return storage.from_id(Skill, storage_build_id)
 
-    filter_has_build_id = gw2storage.Filters((
-        lambda skills: [s for s in skills if s.build_id is not None],
-    ))
+    @staticmethod
+    def filter_has_build_id ():
+        return util.Filters([util.TypedFilter(Skill,
+            lambda skills: [s for s in skills if s.build_id is not None]
+        )])
 
     @staticmethod
     def filter_profession (profession):
-        return gw2storage.Filters((
-            lambda skills: [s for s in skills if profession in s.professions],
-        ))
+        return util.Filters([util.TypedFilter(Skill,
+            lambda skills: [s for s in skills if profession in s.professions]
+        )])
 
     @staticmethod
     def filter_elite_spec (elite_spec):
@@ -401,18 +403,20 @@ class Skill (Entity):
             matching = [s for s in skills if s.elite_spec == elite_spec]
             return matching if matching else core
 
-        return gw2storage.Filters((filter_,))
+        return util.Filters([util.TypedFilter(Skill, filter_)])
 
     @staticmethod
     def filter_type (type_):
-        return gw2storage.Filters((
-            lambda skills: [s for s in skills if s.type_ == type_],
-        ))
+        return util.Filters([util.TypedFilter(Skill,
+            lambda skills: [s for s in skills if s.type_ == type_]
+        )])
 
-    filter_is_main = gw2storage.Filters((
-        lambda skills: [s for s in skills
-                        if not s.is_chained and not s.is_flipover],
-    ))
+    @staticmethod
+    def filter_is_main ():
+        return util.Filters([util.TypedFilter(Skill,
+            lambda skills: [s for s in skills
+                            if not s.is_chained and not s.is_flipover]
+        )])
 
 
 # not obtainable through the API in any sensible way
@@ -512,15 +516,19 @@ class Stats (Entity):
     def path ():
         return ('itemstats',)
 
-    filter_endgame = gw2storage.Filters((
-        lambda stat_sets: [stats for stats in stat_sets
-                           if stats.num_attributes >= 3],
-        ))
+    @staticmethod
+    def filter_endgame ():
+        return util.Filters([util.TypedFilter(Stats,
+            lambda stat_sets: [stats for stats in stat_sets
+                            if stats.num_attributes >= 3]
+            )])
 
-    filter_not_mixed = gw2storage.Filters((
-        lambda stat_sets: [stats for stats in stat_sets
-                           if stats.name.find(' and ') < 0],
-    ))
+    @staticmethod
+    def filter_not_mixed ():
+        return util.Filters([util.TypedFilter(Stats,
+            lambda stat_sets: [stats for stats in stat_sets
+                            if stats.name.find(' and ') < 0]
+        )])
 
 
 class PvpStats (Entity):
