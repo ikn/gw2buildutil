@@ -1,4 +1,4 @@
-# 0.3-next
+# 0.4
 
 - `build`:
     - **breaking**: remove `MarkdownBody`
