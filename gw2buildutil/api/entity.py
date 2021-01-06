@@ -103,22 +103,21 @@ class Profession (Entity):
     def path ():
         return ('professions',)
 
-
-    def can_wield (self, weapon, elite_spec=None):
-        wield_info = self._weapons.get(weapon.type_)
+    def can_wield_type (self, weapon_type, elite_spec=None):
+        wield_info = self._weapons.get(weapon_type)
         if wield_info is None:
-            return False
+            return set()
 
         if wield_info['elite spec api id'] is not None:
             if elite_spec is None:
-                return False
+                return set()
             if wield_info['elite spec api id'] != elite_spec.api_id:
-                return False
+                return set()
 
-        if weapon.hand not in wield_info['hands']:
-            return False
+        return wield_info['hands']
 
-        return True
+    def can_wield (self, weapon, elite_spec=None):
+        return weapon.hand in self.can_wield_type(weapon.type_, elite_spec)
 
 
 _spec_ids = {

@@ -42,6 +42,14 @@ class Identified:
         return str(id_).lower()
 
 
+class Record:
+    _attrs = ()
+
+    def modify (self, attrs):
+        args = [attrs.get(name, getattr(self, name)) for name in self._attrs]
+        return type(self)(*args)
+
+
 def strip_empty_lines (lines, leading=True, trailing=True, inner=None):
     in_leading = True
     empty_count = 0

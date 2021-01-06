@@ -1,5 +1,9 @@
 # 0.4-next
 
+- `buildmod`: new module
+- `api`:
+    - `entity.Profession`: add `can_wield_type` method
+
 # 0.4
 
 - `build`:

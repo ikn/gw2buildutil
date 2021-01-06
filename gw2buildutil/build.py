@@ -39,7 +39,9 @@ class GameModes (enum.Enum):
 _game_modes_id_lookup = _enum_id_lookup(GameModes)
 
 
-class BuildMetadata (util.Typed):
+class BuildMetadata (util.Record, util.Typed):
+    _attrs = ('game_mode', 'profession', 'elite_spec', 'labels')
+
     def __init__ (self, game_mode, profession, elite_spec, labels=()):
         self.game_mode = game_mode # can be None
         self.profession = profession
@@ -166,7 +168,9 @@ class PvpSigils (enum.Enum):
 _pvp_sigils_id_lookup = _enum_id_lookup(PvpSigils)
 
 
-class Weapon (util.Typed):
+class Weapon (util.Record, util.Typed):
+    _attrs = ('type_', 'hand', 'stats', 'sigils')
+
     def __init__ (self, type_, hand, stats, sigils):
         self.type_ = type_
         self.hand = hand
@@ -185,7 +189,9 @@ class Weapon (util.Typed):
         return (self.type_, self.hand, self.stats, self.sigils)
 
 
-class Weapons (util.Typed):
+class Weapons (util.Record, util.Typed):
+    _attrs = ('set1', 'set2')
+
     def __init__ (self, set1, set2=None):
         self.set1 = tuple(set1)
         self.set2 = None if set2 is None else tuple(set2)
@@ -332,7 +338,9 @@ class ArmourTypes (enum.Enum):
 _armour_types_id_lookup = _enum_id_lookup(ArmourTypes)
 
 
-class ArmourPiece (util.Typed):
+class ArmourPiece (util.Record, util.Typed):
+    _attrs = ('type_', 'stats', 'rune')
+
     def __init__ (self, type_, stats, rune):
         self.type_ = type_
         self.stats = stats
@@ -345,8 +353,12 @@ class ArmourPiece (util.Typed):
         return (self.type_, self.stats, self.rune)
 
 
-class Armour (util.Typed):
+class Armour (util.Record, util.Typed):
+    _attrs = ('pieces',)
+
     def __init__ (self, pieces):
+        if isinstance(pieces, dict):
+            pieces = pieces.values()
         self.pieces = {p.type_: p for p in pieces}
 
         if len(pieces) != 6:
@@ -360,7 +372,9 @@ class Armour (util.Typed):
         return tuple(self.pieces.items())
 
 
-class PvpArmour (util.Typed):
+class PvpArmour (util.Record, util.Typed):
+    _attrs = ('rune',)
+
     def __init__ (self, rune):
         self.rune = rune
 
@@ -380,7 +394,9 @@ class TrinketTypes (enum.Enum):
     RING_2 = 'ring 2'
 
 
-class Trinket (util.Typed):
+class Trinket (util.Record, util.Typed):
+    _attrs = ('type_', 'stats')
+
     def __init__ (self, type_, stats):
         self.type_ = type_
         self.stats = stats
@@ -392,8 +408,12 @@ class Trinket (util.Typed):
         return (self.type_, self.stats)
 
 
-class Trinkets (util.Typed):
+class Trinkets (util.Record, util.Typed):
+    _attrs = ('pieces',)
+
     def __init__ (self, pieces):
+        if isinstance(pieces, dict):
+            pieces = pieces.values()
         self.pieces = {p.type_: p for p in pieces}
 
         if len(pieces) != 6:
@@ -429,7 +449,9 @@ _gear_groups_id_lookup.update(_armour_types_id_lookup)
 _gear_groups_id_lookup.update({type_.value: type_ for type_ in TrinketTypes})
 
 
-class Consumables (util.Typed):
+class Consumables (util.Record, util.Typed):
+    _attrs = ('food', 'utility')
+
     def __init__ (self, food=None, utility=None):
         self.food = food
         self.utility = utility
@@ -438,7 +460,9 @@ class Consumables (util.Typed):
         return (self.food, self.utility)
 
 
-class Gear (util.Typed):
+class Gear (util.Record, util.Typed):
+    _attrs = ('weapons', 'armour', 'trinkets', 'consumables')
+
     def __init__ (self, weapons, armour, trinkets, consumables):
         self.weapons = weapons
         self.armour = armour
@@ -452,7 +476,9 @@ class Gear (util.Typed):
         self.weapons.check_profession(profession, elite_spec)
 
 
-class PvpGear (util.Typed):
+class PvpGear (util.Record, util.Typed):
+    _attrs = ('stats', 'weapons', 'armour')
+
     def __init__ (self, stats, weapons, armour):
         self.stats = stats
         self.weapons = weapons
@@ -468,6 +494,7 @@ class PvpGear (util.Typed):
 class TraitTier (util.Typed):
     def __init__ (self, api_id, name):
         self.api_id = api_id
+        self.index = None if api_id == 0 else (api_id - 1)
         self.name = name
 
     def _value (self):
@@ -534,7 +561,9 @@ _trait_choices_index_lookup = {choice.value.index: choice
                                for choice in TraitChoices}
 
 
-class SpecialisationChoices (util.Typed):
+class SpecialisationChoices (util.Record, util.Typed):
+    _attrs = ('spec', 'choices')
+
     def __init__ (self, spec, choices):
         self.spec = spec
         self.choices = tuple(choices) # items can be None
@@ -551,7 +580,9 @@ class SpecialisationChoices (util.Typed):
         return (self.spec, self.choices)
 
 
-class Traits (util.Typed):
+class Traits (util.Record, util.Typed):
+    _attrs = ('specs',)
+
     def __init__ (self, specs):
         self.specs = tuple(specs) # items can be None
 
@@ -621,7 +652,9 @@ class SkillTypes (enum.Enum):
 _skill_types_id_lookup = _enum_id_lookup(SkillTypes)
 
 
-class Skills (util.Typed):
+class Skills (util.Record, util.Typed):
+    _attrs = ('heal', 'utilities', 'elite')
+
     def __init__ (self, heal, utilities, elite):
         # skills can be None
         self.heal = heal
@@ -667,7 +700,9 @@ class Skills (util.Typed):
                 raise BuildError(f'skill not usable underwater: {skill.name}')
 
 
-class RevenantSkills (util.Typed):
+class RevenantSkills (util.Record, util.Typed):
+    _attrs = ('legends',)
+
     def __init__ (self, legends):
         self.legends = tuple(legends) # items can be None
 
@@ -687,7 +722,9 @@ class RevenantSkills (util.Typed):
                 raise BuildError(f'legend not usable underwater: {legend.name}')
 
 
-class RangerPets (util.Typed):
+class RangerPets (util.Record, util.Typed):
+    _attrs = ('pets',)
+
     def __init__ (self, pets):
         self.pets = tuple(pets) # items can be None
 
@@ -698,7 +735,9 @@ class RangerPets (util.Typed):
         return self.pets
 
 
-class RangerOptions (util.Typed):
+class RangerOptions (util.Record, util.Typed):
+    _attrs = ('pets', 'aquatic_pets')
+
     def __init__ (self, pets, aquatic_pets=None):
         self.pets = pets
         self.aquatic_pets = (RangerPets((None, None))
@@ -708,7 +747,10 @@ class RangerOptions (util.Typed):
         return (self.pets, self.aquatic_pets)
 
 
-class Intro:
+class Intro (util.Record):
+    _attrs = ('url', 'description', 'gear', 'traits', 'skills',
+              'profession_options', 'aquatic_skills')
+
     def __init__ (self, url, description, gear, traits, skills,
                   profession_options=None, aquatic_skills=None):
         self.url = url # can be None
@@ -778,7 +820,9 @@ class BoonTargets (enum.Enum):
 _boon_targets_id_lookup = _enum_id_lookup(BoonTargets)
 
 
-class BoonUptime:
+class BoonUptime (util.Record):
+    _attrs = ('boon', 'target', 'uptime_percent')
+
     def __init__ (self, boon, target, uptime_percent):
         self.boon = boon
         self.target = target
@@ -795,7 +839,10 @@ class BoonNotes:
         self.boon_uptime_variants = boon_uptime_variants
 
 
-class Build:
+class Build (util.Record):
+    _attrs = ('metadata', 'intro', 'alternatives', 'usage', 'notes',
+              'boon_notes', 'encounters')
+
     def __init__ (self, metadata, intro, alternatives=None, usage=None,
                   notes=None, boon_notes=None, encounters=None):
         self.metadata = metadata
