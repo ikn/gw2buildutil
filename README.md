@@ -23,4 +23,4 @@ supported.
 
 - [Python 3](http://www.python.org) (>= 3.7)
 - [Docutils](https://docutils.sourceforge.io) - optional: to use
-  `reStructuredText` in the `textbody` module
+  reStructuredText in the `textbody` module
