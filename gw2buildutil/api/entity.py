@@ -192,6 +192,8 @@ class Skill (Entity):
             id_ = id_.replace('.', '') # eg. 'A.E.D.'
         if id_.startswith('summon '):
             id_ = id_[len('summon '):]
+        if id_.startswith('prepare '):
+            id_ = id_[len('prepare '):]
 
         if 'type' not in result:
             raise SkipEntityError()
