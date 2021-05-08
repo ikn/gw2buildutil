@@ -1,5 +1,7 @@
 # 0.4-next
 
+- fix bug: makefile didn't respect `prefix` and installed readme to the wrong
+  location
 - `buildmod`: new module
 - `api`:
     - `entity.Profession`: add `can_wield_type` method

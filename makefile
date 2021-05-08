@@ -1,4 +1,7 @@
 project_name := gw2buildutil
+prefix := /usr/local
+datarootdir := $(prefix)/share
+docdir := $(datarootdir)/doc/$(project_name)
 
 INSTALL_DATA := install -m 644
 
