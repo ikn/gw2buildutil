@@ -1,5 +1,6 @@
 # 0.4-next
 
+- update for End of Dragons
 - fix bug: makefile didn't respect `prefix` and installed readme to the wrong
   location
 - `buildmod`: new module

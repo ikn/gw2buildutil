@@ -3,7 +3,7 @@ import urllib.parse
 import urllib.request
 
 BASE_URL = 'https://api.guildwars2.com/v2'
-SCHEMA_VERSION = '2020-10-01T00:00:00Z'
+SCHEMA_VERSION = '2022-04-22T00:00:00Z'
 MAX_QUERYSTRING_SIZE = 1024
 BATCH_SIZE = 100
 
