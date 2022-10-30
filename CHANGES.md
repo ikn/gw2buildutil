@@ -6,6 +6,8 @@
 - `buildmod`: new module
 - `api`:
     - `entity.Profession`: add `can_wield_type` method
+    - `entity.Skill`: conjure and preparation skills are now also indexed by
+      abbreviated IDs, e.g. `earth shield`, `thousand needles`
 
 # 0.4
 
@@ -17,14 +19,14 @@
     - add `entity.Trait`
     - `entity.Entity`: add `extra_entity_relations` method for overriding
     - `Skill` entities are now indexed by extra IDs:
-        - weapon skills, eg. `pistol 4`, `gs 3`, `dagger earth 5`,
+        - weapon skills, e.g. `pistol 4`, `gs 3`, `dagger earth 5`,
           `elixir gun 4`, `staff ambush`, `sword stealth`, `sword dagger 3`
-        - profession skills, eg. `f3`, `scrapper f5`
-        - engineer toolbelt skills, eg. `elixir h toolbelt`, `bk tb`
-        - legend skills, eg. `assassin heal`, `jalis elite`
+        - profession skills, e.g. `f3`, `scrapper f5`
+        - engineer toolbelt skills, e.g. `elixir h toolbelt`, `bk tb`
+        - legend skills, e.g. `assassin heal`, `jalis elite`
     - `entity.Skill`: add `is_flipover`, `filter_is_main`, `profession`
     - `Profession` and `Specialisation` entities are now indexed by abbreviated
-      IDs, eg. `necro`, `holo`
+      IDs, e.g. `necro`, `holo`
     - `storage.Storage.from_id` can now be called with multiple entity types
     - **breaking**: change `entity.RevenantLegend` attributes to methods:
       `heal_skill`, `utility_skills`, `elite_skill`

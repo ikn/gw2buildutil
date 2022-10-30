@@ -194,6 +194,8 @@ class Skill (Entity):
             id_ = id_[len('summon '):]
         if id_.startswith('prepare '):
             id_ = id_[len('prepare '):]
+        if id_.startswith('conjure '):
+            id_ = id_[len('conjure '):]
 
         if 'type' not in result:
             raise SkipEntityError()
