@@ -20,8 +20,11 @@ def parse_url (lines):
 
 
 def parse_description (paragraphs):
-    return build.TextBody(
-        '\n\n'.join('\n'.join(lines) for lines in paragraphs))
+    if paragraphs:
+        return build.TextBody(
+            '\n\n'.join('\n'.join(lines) for lines in paragraphs))
+    else:
+        return None
 
 
 stats_pattern = re.compile('^'

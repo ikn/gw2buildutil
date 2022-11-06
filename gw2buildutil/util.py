@@ -83,7 +83,7 @@ def group_paragraphs (lines):
     for line in lines:
         if line:
             paragraph.append(line)
-        else:
+        elif paragraph:
             yield paragraph
             paragraph = []
     yield paragraph

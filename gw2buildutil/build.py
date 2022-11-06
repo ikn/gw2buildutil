@@ -66,6 +66,9 @@ class TextBody:
     def __init__ (self, source):
         self.source = source
 
+    def __repr__ (self):
+        return self.source
+
 
 class WeaponType (util.Typed, util.Identified):
     def __init__ (self, ids, hands):

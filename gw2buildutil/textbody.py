@@ -58,7 +58,8 @@ def _lookup_entity (entity_types, full_text, build_meta, api_storage):
     return lookup(full_text, build_meta.profession, build_meta.elite_spec)
 
 
-def _rst_register_api_role (role_names, entity_types, class_prefix, build_meta, api_storage):
+def _rst_register_api_role (role_names, entity_types, class_prefix, build_meta,
+                            api_storage):
     def role (name, raw_text, text, line_num, inliner, options={}, content=[]):
         try:
             entity = _lookup_entity(entity_types, text, build_meta, api_storage)
@@ -106,7 +107,8 @@ def render_rst_html (
         # everything more severe)
         'halt_level': 2,
     }
-    source = '.. default-role:: entity\n' + text_body.source
+    lines = util.strip_empty_lines(text_body.source.split('\n'))
+    source = '.. default-role:: entity\n\n' + '\n'.join(lines)
     doc_parts = docutils.core.publish_parts(source,
                                             parser_name='restructuredtext',
                                             writer_name='html',
