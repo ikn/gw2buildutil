@@ -17,11 +17,11 @@ def _plain_text_lines (text_body):
                                   inner='collapse')
 
 
-def render_plain_text_plain (text_body):
+def render_plain_text_plain (text_body, build_meta, api_storage, options):
     return '\n'.join(_plain_text_lines(text_body))
 
 
-def render_plain_text_html (text_body):
+def render_plain_text_html (text_body, build_meta, api_storage, options):
     paragraphs = []
     for paragraph in util.group_paragraphs(_plain_text_lines(text_body)):
         paragraphs.append('<br/>\n'.join(
@@ -83,13 +83,11 @@ def _rst_register_api_role (role_names, entity_types, class_prefix, build_meta,
 
 
 # not thread-safe
-def render_rst_html (
-    text_body,
-    build_meta,
-    api_storage,
-    class_prefix='gw2-',
-    entity_types=api.entity.BUILTIN_TYPES
-):
+def render_rst_html (text_body, build_meta, api_storage, options):
+    class_prefix = options.get('class prefix', 'gw2-')
+    entity_types = options.get('entity types', api.entity.BUILTIN_TYPES)
+    heading_level = max(1, options.get('heading level', 1))
+
     if docutils is None:
         raise RuntimeError('reStructuredText rendering is not supported: '
                            'Docutils is not installed')
@@ -113,16 +111,28 @@ def render_rst_html (
                                             parser_name='restructuredtext',
                                             writer_name='html',
                                             settings_overrides=settings)
-    return doc_parts['body']
+    body = doc_parts['body']
+
+    if heading_level != 1:
+        for i in range(6, 0, -1):
+            target = min(6, heading_level - 1 + i)
+            body = body.replace(f'<h{i}', f'<h{target}')
+            body = body.replace(f'</h{i}', f'</h{target}')
+
+    return body
 
 
 class Renderer:
-    def __init__ (self, render_fn):
-        self.render = render_fn
+    def __init__ (self, render_fn, options={}):
+        self._render = render_fn
+        self.options = options
+
+    def render (self, text_body, build_meta, api_storage):
+        return self._render(text_body, build_meta, api_storage, self.options)
 
 
 class RenderFormat(enum.Enum):
-    PLAIN_TEXT_PLAIN = Renderer(lambda t, m, s: render_plain_text_plain(t))
-    PLAIN_TEXT_HTML = Renderer(lambda t, m, s: render_plain_text_html(t))
+    PLAIN_TEXT_PLAIN = render_plain_text_plain
+    PLAIN_TEXT_HTML = render_plain_text_html
     # not thread-safe
-    RST_HTML = Renderer(lambda t, m, s: render_rst_html(t, m, s))
+    RST_HTML = render_rst_html
