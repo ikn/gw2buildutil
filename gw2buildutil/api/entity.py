@@ -653,6 +653,39 @@ class UtilityConsumable (Entity):
         return ('items',)
 
 
+class _DirectEntity (Entity):
+    def __init__ (self, result, relations, storage, crawler):
+        for key, val in result.items():
+            if key != 'id' and key != 'ids':
+                setattr(self, key, val)
+        Entity.__init__(self, result['id'], result.get('ids', ()))
+
+
+class Boon (_DirectEntity):
+    @staticmethod
+    def path ():
+        return ('boons',)
+
+
+class Condition (_DirectEntity):
+    @staticmethod
+    def path ():
+        return ('conditions',)
+
+
+class CC (_DirectEntity):
+    @staticmethod
+    def path ():
+        return ('cc-effects',)
+
+
+class Effect (_DirectEntity):
+    @staticmethod
+    def path ():
+        return ('common-effects',)
+
+
 BUILTIN_TYPES = [
     o for o in vars().values()
-    if inspect.isclass(o) and issubclass(o, Entity) and o is not Entity]
+    if inspect.isclass(o) and issubclass(o, Entity)
+    and o is not Entity and o is not _DirectEntity]

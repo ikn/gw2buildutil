@@ -5,6 +5,7 @@
   location
 - `buildmod`: new module
 - `api`:
+    - add `entity.Boon`, `entity.Condition`, `entity.CC` and `entity.Effect`
     - `entity.Profession`: add `can_wield_type` method
     - `entity.Skill`: conjure and preparation skills are now also indexed by
       abbreviated IDs, e.g. `earth shield`, `thousand needles`
