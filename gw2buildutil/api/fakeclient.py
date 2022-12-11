@@ -21,17 +21,17 @@ _data_by_path = {
 
     ('conditions',): (
         {'name': 'Bleeding', 'ids': ('bleeding', 'bleed')},
-        {'name': 'Blinded', 'ids': ('blinded', 'blind')},
+        {'name': 'Blind', 'ids': ('blinded', 'blind')},
         {'name': 'Burning', 'ids': ('burning', 'burn')},
-        {'name': 'Chilled', 'ids': ('chilled', 'chill')},
+        {'name': 'Chill', 'ids': ('chilled', 'chill')},
         {'name': 'Confusion', 'ids': ('confusion', 'confu')},
         {'name': 'Crippled', 'ids': ('crippled', 'cripple')},
         {'name': 'Fear', 'ids': ('fear',)},
-        {'name': 'Immobilized', 'ids': (
+        {'name': 'Immobilize', 'ids': (
             'immobilized', 'immobilised', 'immobilize', 'immobilise',
             'immobile', 'immob'
         )},
-        {'name': 'Poisoned', 'ids': ('poisoned', 'poison')},
+        {'name': 'Poison', 'ids': ('poisoned', 'poison')},
         {'name': 'Slow', 'ids': ('slow',)},
         {'name': 'Taunt', 'ids': ('taunt',)},
         {'name': 'Torment', 'ids': ('torment',)},
