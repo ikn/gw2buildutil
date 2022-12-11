@@ -2,6 +2,8 @@ import json
 import urllib.parse
 import urllib.request
 
+SCHEMA_VERSION = '1'
+
 
 _data_by_path = {
     ('boons',): (
@@ -59,6 +61,7 @@ _data_by_path = {
 
 class FakeClient:
     supported_paths = _data_by_path.keys()
+    schema_version = SCHEMA_VERSION
 
     def list_ (self, path):
         return list(range(len(_data_by_path[path])))

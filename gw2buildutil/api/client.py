@@ -12,7 +12,10 @@ class Client:
     def __init__ (self, base_url=BASE_URL, batch_size=BATCH_SIZE):
         self._fake_client = fakeclient.FakeClient()
         self._api_client = apiclient.ApiClient(base_url, batch_size)
-        self.schema_version = self._api_client.schema_version
+        self.schema_version = repr((
+            self._fake_client.schema_version,
+            self._api_client.schema_version,
+        ))
 
     def _choose_client (self, path):
         return (self._fake_client
