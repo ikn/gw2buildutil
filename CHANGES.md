@@ -11,6 +11,10 @@
     - `entity.Profession`: add `can_wield_type` method
     - `entity.Skill`: conjure and preparation skills are now also indexed by
       abbreviated IDs, e.g. `earth shield`, `thousand needles`
+    - fix bug: some conjure weapon skills were not indexed by extra IDs, such as
+      `earth shield 5`
+    - fix bug: some engineer toolbelt skills were not indexed by extra IDs, such
+      as `grenade kit toolbelt`
     - fix bug: `api.crawl` ignored the `full_recrawl` argument when not given a
       `storage` argument
 

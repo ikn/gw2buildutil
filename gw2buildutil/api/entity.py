@@ -266,15 +266,6 @@ class Skill (Entity):
         return ids
 
     def _parse_weapon_skill (self, result, relations, storage, crawler):
-        self.weapon_type = None
-        if self.type_ == build.SkillTypes.WEAPON:
-            try:
-                self.weapon_type = (
-                    build.WeaponTypes.from_id(result['weapon_type']))
-            except KeyError:
-                # probably a downed skill
-                self.type_ = None
-
         self.weapon_slot = None
         if 'slot' in result and result['slot'].startswith('Weapon_'):
             try:
@@ -282,15 +273,23 @@ class Skill (Entity):
             except TypeError:
                 pass
 
+        self.weapon_type = None
         weapon_ids = []
         if self.weapon_slot is not None:
-            if self.type_ == build.SkillTypes.WEAPON:
-                weapon_ids.extend(self.weapon_type.value.ids)
-            elif self.type_ == build.SkillTypes.BUNDLE:
-                for bundle_skill in relations.entities(
-                    'bundle', Skill, storage, crawler
-                ):
-                    weapon_ids.extend(bundle_skill.ids)
+            # bundle tokes precedence even if labeled as a weapon skill
+            for bundle_skill in relations.entities(
+                'bundle', Skill, storage, crawler
+            ):
+                weapon_ids.extend(bundle_skill.ids)
+            if not weapon_ids and self.type_ == build.SkillTypes.WEAPON:
+                try:
+                    self.weapon_type = (
+                        build.WeaponTypes.from_id(result['weapon_type']))
+                except KeyError:
+                    # probably a downed skill
+                    self.type_ = None
+                else:
+                    weapon_ids.extend(self.weapon_type.value.ids)
 
         base_ids = []
         if 'attunement' in result:
@@ -329,9 +328,9 @@ class Skill (Entity):
         ids = []
 
         if self.type_ in (build.SkillTypes.HEAL, build.SkillTypes.ELITE):
-            legend_skill = relations.entity(
-                'legend', RevenantLegend, storage, crawler)
-            if legend_skill is not None:
+            for legend_skill in relations.entities(
+                'legend', RevenantLegend, storage, crawler
+            ):
                 for legend_id in legend_skill.ids:
                     for type_id in self.type_.value.ids:
                         ids.append(f'{legend_id} {type_id}')
@@ -341,8 +340,7 @@ class Skill (Entity):
     def _parse_toolbelt_skill (self, relations, storage, crawler):
         ids = []
 
-        main_skill = relations.entity('toolbelt', Skill, storage, crawler)
-        if main_skill is not None:
+        for main_skill in relations.entities('toolbelt', Skill, storage, crawler):
             for main_skill_id in main_skill.ids:
                 for suffix in ('toolbelt', 'tb'):
                     ids.append(f'{main_skill_id} {suffix}')

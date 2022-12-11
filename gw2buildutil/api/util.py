@@ -51,6 +51,9 @@ class Relation:
     def entity (self, entity_type, storage, crawler=None):
         return storage.from_api_id(entity_type, self.api_id, crawler)
 
+    def __repr__ (self):
+        return f'Relation<{self.entity_type_id} {self.api_id}>'
+
 
 class Relations:
     def __init__ (self, relations):
@@ -85,6 +88,9 @@ class Relations:
         relation = self.matching(name, entity_type)
         if relation is not None:
             return relation.entity(entity_type, storage, crawler)
+
+    def __repr__ (self):
+        return f'Relations<{self._relations}>'
 
 
 def lookup_profession (id_, storage):

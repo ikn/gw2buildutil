@@ -161,7 +161,7 @@ class FileStorage (Storage):
             data = json.loads(self._db[relations_key])
         else:
             data = {}
-        relations = {id_: set([(tuple(e_type_id), ref_api_id)
+        relations = {id_: set([(e_type_id, ref_api_id)
                                for e_type_id, ref_api_id in refs])
                      for id_, refs in data.items()}
         for id_ in ids:
@@ -186,7 +186,7 @@ class FileStorage (Storage):
             relations_data = {}
         return util.Relations({
             name: [util.Relation(e_type_id, api_id)
-                   for (e_type_id, api_id) in rs]
+                   for e_type_id, api_id in rs]
             for name, rs in relations_data.items()})
 
     def all_from_id (self, entity_type, id_):
