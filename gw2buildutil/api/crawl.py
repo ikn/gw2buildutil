@@ -80,7 +80,7 @@ def crawl (client=gw2client.Client(),
            full_recrawl=False):
     if storage is None:
         with gw2storage.FileStorage() as storage:
-            crawl(client, storage, entity_types)
+            crawl(client, storage, entity_types, full_recrawl)
         return
 
     crawler = Crawler(client, storage, entity_types)
