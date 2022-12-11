@@ -24,11 +24,9 @@ class GameMode (util.Typed, util.Identified):
 
 
 class GameModes (enum.Enum):
-    OPEN_WORLD = GameMode('Open World', ('open world', 'dungeons'))
+    OPEN_WORLD = GameMode('Open World', ('open world', 'dungeons', 'low-tier fractals'))
     DUNGEONS = GameMode('Dungeons', ('dungeons',))
-    FRACTALS = GameMode('Fractals',
-                         ('unorganised fractals', 'dungeons', 'open world'))
-    RAIDS = GameMode('Raids', ('casual raids', 'casual organised fractals'))
+    RAIDS = GameMode('Raids', ('raids', 'fractals'))
     PVP = GameMode('PvP', ('PvP',))
     WVW = GameMode('WvW', ('WvW',))
 
