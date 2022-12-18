@@ -97,11 +97,22 @@ class Profession (Entity):
             self._weapons[weapon_type] = {
                 'elite spec api id': weapon_elite_spec_api_id,
                 'hands': hands,
+                'skills': {skill['id']: {'attunement': skill.get('attunement')}
+                           for skill in weapon_result['skills']}
             }
 
     @staticmethod
     def path ():
         return ('professions',)
+
+    def extra_entity_relations (self):
+        entities = {}
+        if self._weapons is not None:
+            for weapon_type in self._weapons.values():
+                for skill_api_id in weapon_type['skills']:
+                    entities[(Skill, skill_api_id)] = [
+                        'weapon skill of profession']
+        return entities
 
     def can_wield_type (self, weapon_type, elite_spec=None):
         wield_info = self._weapons.get(weapon_type)
@@ -196,13 +207,16 @@ class Skill (Entity):
             id_ = id_[len('prepare '):]
         if id_.startswith('conjure '):
             id_ = id_[len('conjure '):]
+        if full_id == 'portal entre':
+            id_ = 'portal'
 
-        if 'type' not in result:
-            raise SkipEntityError()
         try:
-            self.type_ = build.SkillTypes.from_id(result['type'])
+            self.type_ = build.SkillTypes.from_id(result.get('type'))
         except KeyError:
-            raise SkipEntityError()
+            if result['description'].startswith('Mech Command.'):
+                self.type_ = build.SkillTypes.PROFESSION
+            else:
+                raise SkipEntityError()
 
         prof_api_ids = result.get('professions', ())
         self.professions = set()
@@ -276,7 +290,7 @@ class Skill (Entity):
         self.weapon_type = None
         weapon_ids = []
         if self.weapon_slot is not None:
-            # bundle tokes precedence even if labeled as a weapon skill
+            # bundle takes precedence even if labeled as a weapon skill
             for bundle_skill in relations.entities(
                 'bundle', Skill, storage, crawler
             ):
@@ -291,11 +305,36 @@ class Skill (Entity):
                 else:
                     weapon_ids.extend(self.weapon_type.value.ids)
 
+        att_from_prof = None
+        relation = relations.matching('weapon skill of profession', Profession)
+        if relation is not None:
+            att_from_prof = (self.profession._weapons[self.weapon_type]
+                             ['skills'][result['id']]['attunement'])
+
+        self.attunement = None
+        self.dual_attunement = None
         base_ids = []
         if 'attunement' in result:
-            attunement = result['attunement']
-            base_ids.append(f'{attunement} {self.weapon_slot}')
-            base_ids.append(f'{attunement[0]}{self.weapon_slot}')
+            att = result['attunement']
+            self.attunement = att.lower()
+            if 'dual_attunement' in result:
+                att2 = result['dual_attunement']
+                self.dual_attunement = att.lower()
+                base_ids.append(
+                    f'{att} {att2} {self.weapon_slot}')
+                base_ids.append(
+                    f'{att2} {att} {self.weapon_slot}')
+                base_ids.append(
+                    f'{att2[0]}{att[0]}{self.weapon_slot}')
+                base_ids.append(
+                    f'{att[0]}{att2[0]}{self.weapon_slot}')
+            else:
+                base_ids.append(f'{att} {self.weapon_slot}')
+                base_ids.append(f'{att[0]}{self.weapon_slot}')
+        elif att_from_prof is not None:
+            self.attunement = att_from_prof.lower()
+            base_ids.append(f'{att_from_prof} {self.weapon_slot}')
+            base_ids.append(f'{att_from_prof[0]}{self.weapon_slot}')
         elif (result['description'].startswith('Ambush.') and
               self.elite_spec is not None and
               self.elite_spec.id_ == 'mirage' and

@@ -9,14 +9,29 @@
 - `api`:
     - add `entity.Boon`, `entity.Condition`, `entity.CC` and `entity.Effect`
     - `entity.Profession`: add `can_wield_type` method
-    - `entity.Skill`: conjure and preparation skills are now also indexed by
-      abbreviated IDs, e.g. `earth shield`, `thousand needles`
-    - fix bug: some conjure weapon skills were not indexed by extra IDs, such as
-      `earth shield 5`
-    - fix bug: some engineer toolbelt skills were not indexed by extra IDs, such
-      as `grenade kit toolbelt`
+    - `entity.Skill`:
+        - fix bug: mech command skills were not available
+        - fix bug: some conjure weapon skills were not indexed by extra IDs,
+          such as `earth shield 5`
+        - fix bug: some engineer toolbelt skills were not indexed by extra IDs,
+          such as `grenade kit toolbelt`
+        - fix bug: some elementalist weapon skills were not indexed by extra
+          IDs, such as `dagger fire 4`
+        - add `Skill.attunement` and `Skill.dual_attunement`
+        - entities are now indexed by extra IDs:
+            - conjure and preparation skills, e.g. `earth shield`,
+              `thousand needles`
+            - Portal Entre by `portal`
+            - weaver dual attunement skills, e.g. `staff fire earth 3`,
+              `dagger fw3` (this also fixes a conflict with normal weapon skill
+              3 IDs)
     - fix bug: `api.crawl` ignored the `full_recrawl` argument when not given a
       `storage` argument
+- `textbody`:
+    - **breaking**: change `RenderFormat` values to be render functions (first
+      argument to `Renderer`) rather than `Renderer` instances
+    - add renderer options
+    - add `heading level` option to `RST_HTML` renderer
 
 # 0.4
 
