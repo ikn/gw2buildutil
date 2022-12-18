@@ -1,4 +1,4 @@
-# 0.4-next
+# 0.5
 
 - update for End of Dragons
 - fix bug: makefile didn't respect `prefix` and installed readme to the wrong

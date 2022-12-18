@@ -5,7 +5,7 @@ with open('README.md', 'r') as f:
 
 setuptools.setup(
     name='gw2buildutil',
-    version='0.4.dev',
+    version='0.5',
     author='Joseph Lansdowne',
     author_email='ikn@ikn.org.uk',
     description='Python library for working with Guild Wars 2 builds',
