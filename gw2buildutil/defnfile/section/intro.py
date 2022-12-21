@@ -219,7 +219,7 @@ def parse_consumables (line, api_storage):
     for c in consumables:
         t = type(c)
         if t in by_type:
-                 raise util.ParseError(
+                 raise parseutil.ParseError(
                      f'multiple {t.type_id()} consumables specified: '
                      f'{by_type[t].name}, {c.name}')
         by_type[t] = c
@@ -344,7 +344,7 @@ def parse (lines, meta, api_storage):
     paragraphs = list(util.group_paragraphs(
         util.strip_empty_lines(lines, inner='collapse')))
     if len(paragraphs) < 3:
-        raise util.ParseError('intro is incomplete')
+        raise parseutil.ParseError('intro is incomplete')
 
     setup = parse_setup(paragraphs[-2], meta, api_storage)
     return build.Intro(
