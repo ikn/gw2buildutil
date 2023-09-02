@@ -108,7 +108,7 @@ class WeaponTypeMod (Modification):
             prof = build.metadata.profession
             spec = (prof if build.metadata.elite_spec is None
                     else build.metadata.elite_spec)
-            hands = prof.can_wield_type(types, build.metadata.elite_spec)
+            hands = prof.can_wield_type(types)
             both = gw2build.WeaponHands.BOTH in hands
             main = gw2build.WeaponHands.MAIN in hands
             off = gw2build.WeaponHands.OFF in hands

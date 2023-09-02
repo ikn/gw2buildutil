@@ -1,5 +1,6 @@
 # 0.5-next
 
+- update for Secrets of the Obscure
 - makefile: add `distclean`
 
 # 0.5

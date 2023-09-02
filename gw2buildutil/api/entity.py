@@ -119,12 +119,6 @@ class Profession (Entity):
         if wield_info is None:
             return set()
 
-        if wield_info['elite spec api id'] is not None:
-            if elite_spec is None:
-                return set()
-            if wield_info['elite spec api id'] != elite_spec.api_id:
-                return set()
-
         return wield_info['hands']
 
     def can_wield (self, weapon, elite_spec=None):

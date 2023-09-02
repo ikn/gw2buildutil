@@ -217,7 +217,7 @@ class Weapons (util.Record, util.Typed):
             if set_ is None:
                 continue
             for weapon in set_:
-                if not profession.can_wield(weapon, elite_spec):
+                if not profession.can_wield(weapon):
                     spec = profession if elite_spec is None else elite_spec
                     raise BuildError(
                         f'{spec.name} cannot wield '
