@@ -1,5 +1,7 @@
 # 0.5-next
 
+- makefile: add `distclean`
+
 # 0.5
 
 - update for End of Dragons
