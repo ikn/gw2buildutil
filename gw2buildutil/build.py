@@ -428,6 +428,70 @@ class Trinkets (util.Record, util.Typed):
         return tuple(self.pieces.items())
 
 
+class PvpRelic (util.Typed, util.Identified):
+    def __init__ (self, name):
+        util.Identified.__init__(self, name)
+        self.name = name
+
+
+class PvpRelics (enum.Enum):
+    AKEEM = PvpRelic('Akeem')
+    ANTITOXIN = PvpRelic('Antitoxin')
+    CERUS = PvpRelic('Cerus')
+    DAGDA = PvpRelic('Dagda')
+    DURABILITY = PvpRelic('Durability')
+    DWAYNA = PvpRelic('Dwayna')
+    EVASION = PvpRelic('Evasion')
+    FIREWORKS = PvpRelic('Fireworks')
+    ISGARREN = PvpRelic('Isgarren')
+    LEADERSHIP = PvpRelic('Leadership')
+    LYHR = PvpRelic('Lyhr')
+    MABON = PvpRelic('Mabon')
+    PEITHA = PvpRelic('Peitha')
+    RESISTANCE = PvpRelic('Resistance')
+    SPEED = PvpRelic('Speed')
+    ADVENTURER = PvpRelic('Adventurer')
+    AFFLICTED = PvpRelic('Afflicted')
+    ARISTOCRACY = PvpRelic('Aristocracy')
+    ASTRAL_WARD = PvpRelic('Astral Ward')
+    BRAWLER = PvpRelic('Brawler')
+    CENTAUR = PvpRelic('Centaur')
+    CHRONOMANCER = PvpRelic('Chronomancer')
+    CITADEL = PvpRelic('Citadel')
+    DAREDEVIL = PvpRelic('Daredevil')
+    DEADEYE = PvpRelic('Deadeye')
+    DEFENDER = PvpRelic('Defender')
+    DRAGONHUNTER = PvpRelic('Dragonhunter')
+    FIREBRAND = PvpRelic('Firebrand')
+    FLOCK = PvpRelic('Flock')
+    FRACTAL = PvpRelic('Fractal')
+    HERALD = PvpRelic('Herald')
+    ICE = PvpRelic('Ice')
+    KRAIT = PvpRelic('Krait')
+    MIRAGE = PvpRelic('Mirage')
+    MONK = PvpRelic('Monk')
+    NECROMANCER = PvpRelic('Necromancer')
+    NIGHTMARE = PvpRelic('Nightmare')
+    PACK = PvpRelic('Pack')
+    REAPER = PvpRelic('Reaper')
+    SCOURGE = PvpRelic('Scourge')
+    THIEF = PvpRelic('Thief')
+    TROOPER = PvpRelic('Trooper')
+    UNSEEN_INVASION = PvpRelic('Unseen Invasion')
+    WARRIOR = PvpRelic('Warrior')
+    WATER = PvpRelic('Water')
+    WEAVER = PvpRelic('Weaver')
+    WIZARDS_TOWER = PvpRelic('Wizard\'s Tower')
+    ZEPHYRITE = PvpRelic('Zephyrite')
+    VASS = PvpRelic('Vass')
+
+    @staticmethod
+    def from_id (id_):
+        return _pvp_relics_id_lookup[util.Identified.normalise_id(id_)]
+
+_pvp_relics_id_lookup = _enum_id_lookup(PvpRelics)
+
+
 class GearGroup (util.Identified):
     def __init__ (self, ids):
         util.Identified.__init__(self, ids)
@@ -464,14 +528,16 @@ class Consumables (util.Record, util.Typed):
 class Gear (util.Record, util.Typed):
     _attrs = ('weapons', 'armour', 'trinkets', 'consumables')
 
-    def __init__ (self, weapons, armour, trinkets, consumables):
+    def __init__ (self, weapons, armour, trinkets, relic, consumables):
         self.weapons = weapons
         self.armour = armour
         self.trinkets = trinkets
+        self.relic = relic
         self.consumables = consumables
 
     def _value (self):
-        return (self.weapons, self.armour, self.trinkets, self.consumables)
+        return (self.weapons, self.armour, self.trinkets, self.relic,
+                self.consumables)
 
     def check_profession (self, profession, elite_spec):
         self.weapons.check_profession(profession, elite_spec)
@@ -480,13 +546,14 @@ class Gear (util.Record, util.Typed):
 class PvpGear (util.Record, util.Typed):
     _attrs = ('stats', 'weapons', 'armour')
 
-    def __init__ (self, stats, weapons, armour):
+    def __init__ (self, stats, weapons, armour, relic):
         self.stats = stats
         self.weapons = weapons
         self.armour = armour
+        self.relic = relic
 
     def _value (self):
-        return (self.stats, self.weapons, self.armour)
+        return (self.stats, self.weapons, self.armour, self.relic)
 
     def check_profession (self, profession, elite_spec):
         self.weapons.check_profession(profession, elite_spec)

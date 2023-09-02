@@ -2,7 +2,7 @@ import json
 import urllib.parse
 import urllib.request
 
-SCHEMA_VERSION = '2022-10-30T00:00:00Z'
+SCHEMA_VERSION = '2023-09-02T00:00:00Z'
 MAX_QUERYSTRING_SIZE = 1024
 
 

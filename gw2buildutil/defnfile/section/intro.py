@@ -114,17 +114,18 @@ def lookup_rune (id_, api_storage):
         raise parseutil.ParseError(f'unknown rune: {id_}')
 
 
-runes_pattern = re.compile('^('
+runes_relic_pattern = re.compile('^('
     f'(?P<single>{wds_pat})'
     '|'
     f'(?P<multi>\\d {wds_pat}( \\+ \\d {wds_pat})+)'
-    ') runes$')
+    f') runes, (?P<relic>{wds_pat}) relic$')
 
-def parse_runes (runes_line):
-    match = runes_pattern.match(runes_line)
+def parse_runes_relic (runes_relic_line):
+    match = runes_relic_pattern.match(runes_relic_line)
     if match is None:
-        raise parseutil.ParseError('runes definition doesn\'t match expected '
-                                   'format: {}'.format(repr(runes_line)))
+        raise parseutil.ParseError(
+            'runes/relic definition doesn\'t match expected format: '
+            '{}'.format(repr(runes_relic_line)))
 
     fields = match.groupdict()
     if fields['single'] is not None:
@@ -136,7 +137,8 @@ def parse_runes (runes_line):
             {type_: int(count) for count, type_ in rune_items})
     if sum(runes.values()) != 6:
         raise parseutil.ParseError(f'wrong total rune count: {dict(runes)}')
-    return runes
+
+    return runes, fields['relic']
 
 
 def parse_armour (runes, stats, api_storage):
@@ -171,6 +173,13 @@ def parse_trinkets (stats):
         build.Trinket(T.RING_2, stats_lookup(
             (T.RING_2, G.RINGS, G.TRINKETS), stats)),
     ])
+
+
+def lookup_relic (id_, api_storage):
+    try:
+        return api_storage.from_id(api.entity.Relic, id_)
+    except KeyError:
+        raise parseutil.ParseError(f'unknown relic: {id_}')
 
 
 traits_pattern = re.compile('^'
@@ -267,16 +276,19 @@ def parse_setup (lines, meta, api_storage):
         raise parseutil.ParseError('consumables are not allowed for PvP builds')
 
     stats = parse_stats(lines[1], meta, api_storage)
+    runes, relic = parse_runes_relic(lines[2])
     if meta.game_mode == build.GameModes.PVP:
         gear = build.PvpGear(
             stats[None],
             parse_weapons(lines[0], stats, meta, api_storage),
-            parse_pvp_armour(parse_runes(lines[2]), stats))
+            parse_pvp_armour(runes, stats),
+            build.PvpRelics.from_id(relic))
     else:
         gear = build.Gear(
             parse_weapons(lines[0], stats, meta, api_storage),
-            parse_armour(parse_runes(lines[2]), stats, api_storage),
+            parse_armour(runes, stats, api_storage),
             parse_trinkets(stats),
+            lookup_relic(relic, api_storage),
             (parse_consumables(lines[4], api_storage)
             if num_lines == max_lines else build.Consumables()))
 

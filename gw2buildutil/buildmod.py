@@ -359,6 +359,28 @@ class TrinketStatsMod (Modification):
         return build
 
 
+class RelicMod (Modification):
+    def __init__ (self, relic):
+        self.relic = relic
+
+    def modify (self, build):
+        _check_type(self, build.intro.gear, gw2build.Gear)
+        return _modify_simple(
+            build, ('intro', 'gear', 'relic'),
+            self.relic)
+
+
+class PvpRelicMod (Modification):
+    def __init__ (self, relic):
+        self.relic = relic
+
+    def modify (self, build):
+        _check_type(self, build.intro.gear, gw2build.PvpGear)
+        return _modify_simple(
+            build, ('intro', 'gear', 'relic'), self.relic)
+
+
+
 class FoodMod (Modification):
     def __init__ (self, food):
         self.food = food

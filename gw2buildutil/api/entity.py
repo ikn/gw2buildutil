@@ -646,6 +646,29 @@ class Rune (Entity):
         return ('items',)
 
 
+relic_pattern = re.compile(r'^'
+    r'Relic of (the )?(?P<name>[\w\' ]+)'
+    r'$')
+
+class Relic (Entity):
+    def __init__ (self, result, relations, storage, crawler):
+        if result['type'] != 'Mwcc':
+            raise SkipEntityError()
+
+        self.name = result['name']
+        match = relic_pattern.match(self.name)
+        if match is None:
+            raise SkipEntityError()
+        fields = match.groupdict()
+        ids = [fields['name']]
+
+        Entity.__init__(self, result['id'], ids)
+
+    @staticmethod
+    def path ():
+        return ('items',)
+
+
 food_prefixes = (
     'plate', 'bowl', 'can', 'pot', 'cup', 'jug', 'bit', 'slice', 'loaf',
     'strip', 'glass', 'handful', 'piece',
