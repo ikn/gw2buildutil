@@ -1,9 +1,9 @@
-# 0.5-next
+# 0.5.1 (2023-10-25)
 
 - update for Secrets of the Obscure
 - makefile: add `distclean`
 
-# 0.5
+# 0.5 (2022-12-18)
 
 - update for End of Dragons
 - fix bug: makefile didn't respect `prefix` and installed readme to the wrong
@@ -38,7 +38,7 @@
     - add renderer options
     - add `heading level` option to `RST_HTML` renderer
 
-# 0.4
+# 0.4 (2020-11-20)
 
 - `build`:
     - **breaking**: remove `MarkdownBody`
@@ -68,7 +68,7 @@
 - `defnfile`:
     - parse `usage` and `notes` sections
 
-# 0.3
+# 0.3 (2020-10-20)
 
 - `build`:
     - perform a lot more validation when constructing instances
