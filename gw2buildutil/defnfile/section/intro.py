@@ -7,7 +7,7 @@ from .. import parseutil
 wds_pat = parseutil.words_pattern
 
 
-url_pattern = re.compile(r'^http://gw2skills.net/editor/\?[A-Za-z0-9+-/]+$')
+url_pattern = re.compile(r'^http://([a-z]+\.)?gw2skills.net/editor/\?[A-Za-z0-9+-/]+$')
 
 def parse_url (lines):
     if len(lines) > 1:
