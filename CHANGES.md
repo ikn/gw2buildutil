@@ -1,3 +1,5 @@
+# 0.5.1-next
+
 # 0.5.1 (2023-10-25)
 
 - update for Secrets of the Obscure
