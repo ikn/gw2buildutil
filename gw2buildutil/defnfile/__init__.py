@@ -7,11 +7,12 @@ from . import parseutil, section
 _SKIP_SECTION = object()
 
 
+labels_group_pattern = parseutil.sep_pattern(', ', parseutil.words_pattern)
 title_pattern = re.compile('^'
     f'(?P<mode>{parseutil.words_pattern}) '
     f'(?P<prof>{parseutil.word_pattern}) '
     '\\((?P<labels>'
-         f'{parseutil.sep_pattern(", ", parseutil.words_pattern)}'
+         f'{parseutil.sep_pattern("; ", labels_group_pattern)}'
          ')\\)'
     '$')
 
@@ -33,7 +34,8 @@ def parse_title (title, api_storage):
         raise parseutil.ParseError('title has a missing or incorrect '
                                    f'profession identifier: {repr(title)}')
 
-    labels = [l.strip() for l in fields['labels'].split(',')]
+    labels = [[l.strip() for l in g.split(',')]
+              for g in fields['labels'].split(';')]
     return build.BuildMetadata(game_mode, profession, elite_spec, labels)
 
 

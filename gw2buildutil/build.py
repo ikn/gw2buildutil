@@ -44,7 +44,7 @@ class BuildMetadata (util.Record, util.Typed):
         self.game_mode = game_mode # can be None
         self.profession = profession
         self.elite_spec = elite_spec
-        self.labels = tuple(labels)
+        self.labels = tuple(tuple(group) for group in labels)
 
     def __str__ (self):
         return self.title
@@ -57,7 +57,8 @@ class BuildMetadata (util.Record, util.Typed):
         spec = self.profession if self.elite_spec is None else self.elite_spec
         prefix = ('' if self.game_mode is None
                   else (self.game_mode.value.name + ' '))
-        return f'{prefix}{spec.name}: {", ".join(self.labels)}'
+        labels = "; ".join(", ".join(group) for group in self.labels)
+        return f'{prefix}{spec.name}: {labels}'
 
 
 class TextBody:

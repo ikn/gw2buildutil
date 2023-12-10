@@ -1,5 +1,9 @@
 # 0.5.1-next
 
+- `defnfile`: support ';'-separated label groups in filename
+- `build`:
+    - **breaking**: `labels` is a nested sequence
+
 # 0.5.1 (2023-10-25)
 
 - update for Secrets of the Obscure
