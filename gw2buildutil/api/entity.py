@@ -646,7 +646,7 @@ relic_pattern = re.compile(r'^'
 
 class Relic (Entity):
     def __init__ (self, result, relations, storage, crawler):
-        if result['type'] != 'Mwcc':
+        if result['type'] not in ('Mwcc', 'Relic'):
             raise SkipEntityError()
 
         self.name = result['name']

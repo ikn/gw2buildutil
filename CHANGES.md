@@ -3,6 +3,8 @@
 - `defnfile`: support ';'-separated label groups in filename
 - `build`:
     - **breaking**: `labels` is a nested sequence
+- `api`:
+    - fix new relics
 
 # 0.5.1 (2023-10-25)
 
